@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-const SECRET = process.env.ADMIN_SECRET ?? 'dev-secret-change-me';
+const SECRET = process.env.ADMIN_SECRET ?? '';
 const SESSION_DAYS = 30;
 
 function sign(payload: string): string {
@@ -14,12 +14,13 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 export function createSessionToken(): string {
+  if (!SECRET) throw new Error('ADMIN_SECRET is not set');
   const exp = Date.now() + SESSION_DAYS * 24 * 3600 * 1000;
   return `${exp}.${sign(String(exp))}`;
 }
 
 export function verifySessionToken(token: string | undefined): boolean {
-  if (!token) return false;
+  if (!SECRET || !token) return false;
   const i = token.lastIndexOf('.');
   if (i < 0) return false;
   const exp = token.slice(0, i);
@@ -29,7 +30,9 @@ export function verifySessionToken(token: string | undefined): boolean {
 }
 
 export function verifyAdminPassword(input: string): boolean {
-  const expected = process.env.ADMIN_PASSWORD ?? 'admin';
+  // Fail closed: without ADMIN_PASSWORD configured there is no valid login.
+  const expected = process.env.ADMIN_PASSWORD;
+  if (!expected) return false;
   const a = Buffer.from(input);
   const b = Buffer.from(expected);
   return a.length === b.length && timingSafeEqual(a, b);
