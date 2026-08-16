@@ -17,4 +17,12 @@ function createDb() {
   return drizzle(pool, { schema });
 }
 
-export const db = globalForDb.__db ?? (globalForDb.__db = createDb());
+// Lazy init via Proxy: importing this module never throws, so the SSR build
+// succeeds without DATABASE_URL set (the app only touches the DB at request
+// time). The first real query still throws if DATABASE_URL is missing.
+export const db = new Proxy({} as ReturnType<typeof createDb>, {
+  get(_t, prop) {
+    if (!globalForDb.__db) globalForDb.__db = createDb();
+    return Reflect.get(globalForDb.__db, prop, globalForDb.__db);
+  },
+});
