@@ -116,10 +116,8 @@ const tabs = [
                         {b.notes && <p class="mt-1 rounded bg-stone-50 p-2 text-sm text-stone-600"><b>Notes:</b> {b.notes}</p>}
                       </div>
                       <form method="POST" action={`/api/admin/bookings/${b.id}`} class="flex gap-2">
-                        <input type="hidden" name="action" value="approve" />
-                        <button class="rounded-full bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700">Approve</button>
-                        <input type="hidden" name="action" value="decline" />
-                        <button class="rounded-full border border-red-300 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50">Decline</button>
+                        <button type="submit" name="action" value="approve" class="rounded-full bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700">Approve</button>
+                        <button type="submit" name="action" value="decline" class="rounded-full border border-red-300 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50">Decline</button>
                       </form>
                     </div>
                   </div>
