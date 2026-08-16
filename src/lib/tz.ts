@@ -40,7 +40,3 @@ export function dayLabel(d: Date): string {
 export function slotLabel(d: Date): string {
   return formatInTimeZone(d, BUSINESS_TZ, 'EEE d MMM, h:mm a');
 }
-
-export function monthYear(d: Date): string {
-  return formatInTimeZone(d, BUSINESS_TZ, 'MMMM yyyy');
-}

@@ -2,7 +2,7 @@
 import { and, asc, eq } from 'drizzle-orm';
 import { db } from '../../../lib/db';
 import { bookings, invoiceItems, invoices, services } from '../../../../db/schema';
-import { money, dollarsToCents } from '../../../lib/money';
+import { money } from '../../../lib/money';
 import { dayLabel } from '../../../lib/tz';
 
 const id = Number(Astro.params.id);

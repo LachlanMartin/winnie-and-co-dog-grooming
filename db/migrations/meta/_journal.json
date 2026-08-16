@@ -8,6 +8,13 @@
       "when": 1786854008718,
       "tag": "0000_high_omega_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786864645753,
+      "tag": "0001_cooing_mariko_yashida",
+      "breakpoints": true
     }
   ]
 }

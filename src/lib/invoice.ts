@@ -6,8 +6,6 @@ import type { Booking, Service } from '../../db/schema';
 import { priceFor } from './availability';
 import { getSetting } from './settings';
 
-export const INVOICE_STATUSES = ['draft', 'sent', 'paid', 'void'] as const;
-
 async function nextInvoiceNumber(): Promise<string> {
   const prefix = (await getSetting('invoice_prefix')) || 'INV';
   const counter = Number((await getSetting('invoice_counter')) || '0');

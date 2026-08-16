@@ -2,7 +2,6 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   date,
-  index,
   integer,
   jsonb,
   pgTable,
@@ -88,8 +87,6 @@ export const bookings = pgTable(
     uniqueIndex('bookings_slot_live_idx')
       .on(t.slotStart)
       .where(sql`${t.status} in ('pending','confirmed')`),
-    index('bookings_status_idx').on(t.status),
-    index('bookings_slot_idx').on(t.slotStart),
   ],
 );
 
