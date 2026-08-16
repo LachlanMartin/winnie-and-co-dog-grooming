@@ -96,6 +96,18 @@ export async function emailBookingDeclined(b: BookingView) {
   );
 }
 
+export async function emailLoginAlert(ip: string) {
+  await send(
+    OWNER,
+    'Alert: repeated failed admin logins — Winnie & Co',
+    shell(
+      `<p><b>Repeated failed admin login attempts detected.</b></p>
+       <p>More than 5 failed attempts in 15 minutes from IP <code>${ip}</code>.</p>
+       <p>Logins are temporarily blocked for that address. If this wasn't you, someone may be trying to brute-force the admin panel.</p>`,
+    ),
+  );
+}
+
 export async function emailInvoiceSent(
   b: BookingView,
   inv: Invoice,
