@@ -28,7 +28,7 @@ const sections = [
   },
   {
     title: '7. Contact',
-    body: 'Questions about these terms? Call 0408 700 265 or email alisha@winnieandcodoggrooming.com.au.',
+    body: 'Questions about these terms? Call <a href="tel:0408700265" class="underline text-brand-600 hover:text-brand-800">0408 700 265</a> or email <a href="mailto:alisha@winnieandcodoggrooming.com.au" class="underline text-brand-600 hover:text-brand-800">alisha@winnieandcodoggrooming.com.au</a>.',
   },
 ];
 ---
@@ -43,7 +43,7 @@ const sections = [
       {sections.map((s) => (
         <div>
           <h2 class="text-lg font-extrabold text-brand-800">{s.title}</h2>
-          <p class="mt-1 leading-relaxed text-stone-600">{s.body}</p>
+          <p class="mt-1 leading-relaxed text-stone-600" set:html={s.body}></p>
         </div>
       ))}
     </div>
