@@ -22,9 +22,9 @@ async function send(to: string, subject: string, html: string) {
 
 const shell = (body: string) => `
   <div style="font-family:Nunito,Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1f2937;line-height:1.5">
-    <div style="padding:20px 0;border-bottom:2px solid #9be9fd">
-      <span style="font-weight:800;font-size:20px;color:#0b5a87">Winnie &amp; Co</span>
-      <span style="color:#12a7e4">Dog Grooming</span>
+    <div style="padding:20px 0 10px;text-align:center;border-bottom:2px solid #9be9fd">
+      <img src="${SITE}/images/logo.png" alt="Winnie &amp; Co Dog Grooming" width="150" style="display:block;margin:0 auto;max-width:150px;height:auto" />
+      <img src="${SITE}/images/under-logo.png" alt="Mobile dog grooming in Berwick &amp; surrounds" style="display:block;width:100%;max-width:520px;height:auto;margin:12px auto 0" />
     </div>
     <div style="padding:24px 0">${body}</div>
     <div style="padding:16px 0;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280">
