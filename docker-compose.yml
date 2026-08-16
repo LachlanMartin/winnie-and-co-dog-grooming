@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: winnie
+    ports:
+      - "5432:5432"
+    volumes:
+      - winnie_pg:/var/lib/postgresql/data
+
+volumes:
+  winnie_pg:

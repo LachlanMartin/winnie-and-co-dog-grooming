@@ -1,0 +1,30 @@
+---
+import { asc, eq } from 'drizzle-orm';
+import Base from '../layouts/Base.astro';
+import BookingWizard from '../components/BookingWizard.astro';
+import { db } from '../lib/db';
+import { addons, services } from '../../db/schema';
+import { SIZE_LABELS } from '../lib/availability';
+
+const [allServices, allAddons] = await Promise.all([
+  db.select().from(services).where(eq(services.active, true)).orderBy(asc(services.sortOrder)),
+  db.select().from(addons).where(eq(addons.active, true)).orderBy(asc(addons.sortOrder)),
+]);
+
+const preselect = Astro.url.searchParams.get('service');
+---
+
+<Base title="Book a groom · Winnie & Co Dog Grooming" description="Book your dog's grooming appointment online.">
+  <section class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+    <a href="/" class="text-sm font-semibold text-brand-600 hover:text-brand-800">&larr; Back home</a>
+    <h1 class="mt-2 text-3xl font-black text-stone-900">Book a groom</h1>
+    <p class="mt-1 text-stone-600">Pick a service, then choose a day and time. Your request goes to Alisha for confirmation.</p>
+
+    <BookingWizard
+      services={allServices}
+      addons={allAddons}
+      preselect={preselect}
+      sizeLabels={SIZE_LABELS}
+    />
+  </section>
+</Base>

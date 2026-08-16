@@ -1,0 +1,41 @@
+---
+import { eq } from 'drizzle-orm';
+import Base from '../../layouts/Base.astro';
+import { db } from '../../lib/db';
+import { bookings, services } from '../../../db/schema';
+import { dayLabel } from '../../lib/tz';
+
+const id = Number(Astro.url.searchParams.get('id'));
+const [booking] = id
+  ? await db.select().from(bookings).where(eq(bookings.id, id)).limit(1)
+  : [];
+const [service] = booking
+  ? await db.select().from(services).where(eq(services.id, booking.serviceId)).limit(1)
+  : [];
+---
+
+<Base title="Request received · Winnie & Co Dog Grooming">
+  <section class="mx-auto max-w-2xl px-4 py-20 text-center sm:px-6">
+    <p class="text-5xl">🐾</p>
+    <h1 class="mt-4 text-3xl font-black text-stone-900">Request received!</h1>
+    {booking && service ? (
+      <>
+        <p class="mt-3 text-stone-600">
+          Thanks {booking.customerName.split(' ')[0]} — your {service.name} booking for{' '}
+          <b>{booking.dogName}</b> on <b>{dayLabel(booking.slotStart)}</b> has been received and is
+          awaiting confirmation.
+        </p>
+        <p class="mt-2 text-sm text-stone-500">
+          You'll get a confirmation email once Alisha approves it. Check the address and details in
+          the email — any questions, call 0408 700 265.
+        </p>
+      </>
+    ) : (
+      <p class="mt-3 text-stone-600">Your booking request has been received and is awaiting confirmation.</p>
+    )}
+    <div class="mt-8 flex justify-center gap-3">
+      <a href="/" class="rounded-full bg-brand-600 px-6 py-3 font-bold text-white hover:bg-brand-700">Back home</a>
+      <a href="/book" class="rounded-full border-2 border-brand-600 px-6 py-3 font-bold text-brand-700 hover:bg-brand-50">Book another</a>
+    </div>
+  </section>
+</Base>

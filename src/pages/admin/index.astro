@@ -1,0 +1,314 @@
+---
+import { asc, ne } from 'drizzle-orm';
+import { db } from '../../lib/db';
+import {
+  addons,
+  bookings,
+  blockouts,
+  invoices,
+  services,
+  workingHours,
+} from '../../../db/schema';
+import { getSettings } from '../../lib/settings';
+import { money } from '../../lib/money';
+import { dayLabel, timeOfDay } from '../../lib/tz';
+
+const tab = Astro.url.searchParams.get('tab') ?? 'bookings';
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const [serviceRows, addonRows, hourRows, blockRows] = await Promise.all([
+  db.select().from(services).orderBy(asc(services.sortOrder)),
+  db.select().from(addons).orderBy(asc(addons.sortOrder)),
+  db.select().from(workingHours).orderBy(asc(workingHours.dayOfWeek)),
+  db.select().from(blockouts).orderBy(asc(blockouts.startAt)),
+]);
+
+const bookingRows = await db
+  .select()
+  .from(bookings)
+  .where(ne(bookings.status, 'declined'))
+  .orderBy(asc(bookings.slotStart));
+
+const invRows = await db.select().from(invoices).orderBy(asc(invoices.number));
+
+const serviceById = new Map(serviceRows.map((s) => [s.id, s]));
+const addonById = new Map(addonRows.map((a) => [a.id, a]));
+
+const enriched = bookingRows.map((b) => ({
+  ...b,
+  service: serviceById.get(b.serviceId),
+  addonNames: (b.addonIds ?? []).map((id) => addonById.get(id)?.name).filter(Boolean),
+}));
+
+const pending = enriched.filter((b) => b.status === 'pending');
+const upcoming = enriched.filter((b) => b.status === 'confirmed' && b.slotStart > new Date());
+const past = enriched.filter((b) => (b.status === 'confirmed' && b.slotStart <= new Date()) || b.status === 'cancelled');
+
+const settings = await getSettings(['business_name', 'abn', 'bank_details', 'invoice_prefix', 'biweekly_sat_anchor']);
+const statusBadge: Record<string, string> = {
+  pending: 'bg-brand-100 text-brand-800',
+  confirmed: 'bg-green-100 text-green-700',
+  declined: 'bg-red-100 text-red-600',
+  cancelled: 'bg-stone-100 text-stone-500',
+};
+
+const tabs = [
+  ['bookings', 'Bookings'],
+  ['hours', 'Hours'],
+  ['blockouts', 'Days off'],
+  ['invoices', 'Invoices'],
+  ['settings', 'Settings'],
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <title>Admin · Winnie &amp; Co</title>
+    <style>
+      @import "./../../styles/global.css";
+    </style>
+  </head>
+  <body class="bg-stone-100 text-stone-800">
+    <header class="border-b border-stone-200 bg-white">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+        <a href="/" class="font-extrabold text-brand-800">🐾 Winnie &amp; Co — Admin</a>
+        <form method="POST" action="/api/admin/logout">
+          <button class="text-sm font-semibold text-stone-500 hover:text-red-600">Sign out</button>
+        </form>
+      </div>
+      <nav class="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 sm:px-6">
+        {tabs.map(([key, label]) => (
+          <a
+            href={`/admin?tab=${key}`}
+            class={`whitespace-nowrap rounded-t-lg px-4 py-2.5 text-sm font-bold ${tab === key ? 'bg-stone-100 text-brand-700' : 'text-stone-500 hover:text-stone-800'}`}
+          >{label}</a>
+        ))}
+      </nav>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <!-- ============ BOOKINGS ============ -->
+      {tab === 'bookings' && (
+        <>
+          <h1 class="text-2xl font-black">Bookings</h1>
+
+          {pending.length > 0 && (
+            <section class="mt-6">
+              <h2 class="text-lg font-extrabold text-brand-700">Awaiting your approval ({pending.length})</h2>
+              <div class="mt-3 space-y-3">
+                {pending.map((b) => (
+                  <div class="rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p class="font-extrabold">{b.customerName} — {b.dogName}</p>
+                        <p class="text-sm text-stone-500">
+                          {b.service?.name}{b.size ? ` · ${b.size}` : ''} · {dayLabel(b.slotStart)} at {timeOfDay(b.slotStart)}
+                        </p>
+                        <p class="text-sm text-stone-500">{b.customerEmail} · {b.customerPhone}</p>
+                        <p class="text-sm text-stone-500">{b.address}{b.suburb ? `, ${b.suburb}` : ''}</p>
+                        {b.addonNames.length > 0 && <p class="mt-1 text-xs font-semibold text-brand-700">Add-ons: {b.addonNames.join(', ')}</p>}
+                        {b.notes && <p class="mt-1 rounded bg-stone-50 p-2 text-sm text-stone-600"><b>Notes:</b> {b.notes}</p>}
+                      </div>
+                      <form method="POST" action={`/api/admin/bookings/${b.id}`} class="flex gap-2">
+                        <input type="hidden" name="action" value="approve" />
+                        <button class="rounded-full bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700">Approve</button>
+                        <input type="hidden" name="action" value="decline" />
+                        <button class="rounded-full border border-red-300 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50">Decline</button>
+                      </form>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section class="mt-8">
+            <h2 class="text-lg font-extrabold">Upcoming ({upcoming.length})</h2>
+            <div class="mt-3 space-y-3">
+              {upcoming.length === 0 && <p class="text-sm text-stone-500">No confirmed upcoming bookings.</p>}
+              {upcoming.map((b) => (
+                <div class="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+                  <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p class="font-extrabold">{b.customerName} — {b.dogName}</p>
+                      <p class="text-sm text-stone-500">
+                        {b.service?.name}{b.size ? ` · ${b.size}` : ''} · {dayLabel(b.slotStart)} at {timeOfDay(b.slotStart)}
+                      </p>
+                      <p class="text-sm text-stone-500">{b.address}{b.suburb ? `, ${b.suburb}` : ''}</p>
+                    </div>
+                    <form method="POST" action={`/api/admin/bookings/${b.id}`}>
+                      <input type="hidden" name="action" value="cancel" />
+                      <button class="rounded-full border border-stone-300 px-4 py-2 text-sm font-bold text-stone-500 hover:bg-stone-50">Cancel</button>
+                    </form>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {past.length > 0 && (
+            <section class="mt-8">
+              <h2 class="text-lg font-extrabold text-stone-400">Past &amp; cancelled</h2>
+              <div class="mt-3 space-y-2">
+                {past.slice(0, 20).map((b) => (
+                  <div class="flex items-center justify-between rounded-lg bg-white px-4 py-2 text-sm text-stone-500">
+                    <span>{dayLabel(b.slotStart)} · {b.dogName} · {b.service?.name}</span>
+                    <span class={`rounded-full px-2 py-0.5 text-xs font-bold ${statusBadge[b.status]}`}>{b.status}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      <!-- ============ HOURS ============ -->
+      {tab === 'hours' && (
+        <>
+          <h1 class="text-2xl font-black">Working hours</h1>
+          <p class="mt-1 text-sm text-stone-500">Tick a day to enable it. Saturday is biweekly — set the anchor date below.</p>
+          <form method="POST" action="/api/admin/hours" class="mt-6 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+            <div class="space-y-2">
+              {DAYS.map((dayName, day) => {
+                const row = hourRows.find((h) => h.dayOfWeek === day);
+                return (
+                  <div class="flex flex-wrap items-center gap-3 rounded-lg bg-stone-50 px-4 py-3">
+                    <label class="flex w-32 items-center gap-2 font-bold text-stone-700">
+                      <input type="checkbox" name={`enabled_${day}`} checked={!!row} class="accent-brand-600" />
+                      {dayName}
+                    </label>
+                    {day === 6 && <span class="text-xs font-semibold text-brand-600">(every week)</span>}
+                    <div class="flex items-center gap-2">
+                      <input type="time" name={`open_${day}`} value={row?.openTime ?? '08:30'} class="rounded-lg border border-stone-300 px-2 py-1.5" />
+                      <span>–</span>
+                      <input type="time" name={`close_${day}`} value={row?.closeTime ?? '17:00'} class="rounded-lg border border-stone-300 px-2 py-1.5" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div class="mt-4 rounded-lg bg-brand-50 px-4 py-3 text-sm">
+              <label class="font-bold text-brand-800" for="biweekly_sat_anchor">Biweekly Saturday anchor date</label>
+              <p class="text-xs text-stone-500">Leave empty for every Saturday. To make Saturdays alternate (biweekly), set the date of a known "on" Saturday.</p>
+              <input type="date" id="biweekly_sat_anchor" name="biweekly_sat_anchor" value={settings.biweekly_sat_anchor ?? ''} class="mt-1 rounded-lg border border-stone-300 px-3 py-2" />
+            </div>
+            <button class="mt-5 rounded-full bg-brand-600 px-6 py-2.5 font-bold text-white hover:bg-brand-700">Save hours</button>
+          </form>
+        </>
+      )}
+
+      <!-- ============ BLOCKOUTS ============ -->
+      {tab === 'blockouts' && (
+        <>
+          <h1 class="text-2xl font-black">Days off &amp; time blocks</h1>
+          <p class="mt-1 text-sm text-stone-500">Block a day or a time range so no bookings can be made.</p>
+          <form method="POST" action="/api/admin/blockouts" class="mt-6 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label class="text-sm font-bold text-stone-700" for="date">Date</label>
+                <input type="date" id="date" name="date" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+              </div>
+              <div class="flex items-end gap-3">
+                <label class="flex items-center gap-2 pb-2 text-sm font-semibold text-stone-600">
+                  <input type="checkbox" name="all_day" value="on" checked class="accent-brand-600" /> All day
+                </label>
+              </div>
+              <div>
+                <label class="text-sm font-bold text-stone-700" for="start_time">From</label>
+                <input type="time" id="start_time" name="start_time" value="09:00" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+              </div>
+              <div>
+                <label class="text-sm font-bold text-stone-700" for="end_time">To</label>
+                <input type="time" id="end_time" name="end_time" value="17:00" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+              </div>
+              <div class="sm:col-span-2">
+                <label class="text-sm font-bold text-stone-700" for="note">Note (optional)</label>
+                <input id="note" name="note" placeholder="e.g. Public holiday, away" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+              </div>
+            </div>
+            <button class="mt-5 rounded-full bg-brand-600 px-6 py-2.5 font-bold text-white hover:bg-brand-700">Add block</button>
+          </form>
+
+          <div class="mt-6 space-y-2">
+            {blockRows.length === 0 && <p class="text-sm text-stone-500">No blocks yet.</p>}
+            {blockRows.map((bl) => (
+              <div class="flex items-center justify-between rounded-lg bg-white px-4 py-3 shadow-sm">
+                <div>
+                  <p class="font-semibold">{dayLabel(bl.startAt)}{timeOfDay(bl.startAt) !== '00:00' ? ` · ${timeOfDay(bl.startAt)}–${timeOfDay(bl.endAt)}` : ' · All day'}</p>
+                  {bl.note && <p class="text-sm text-stone-500">{bl.note}</p>}
+                </div>
+                <form method="POST" action="/api/admin/blockouts">
+                  <input type="hidden" name="action" value="delete" />
+                  <input type="hidden" name="id" value={bl.id} />
+                  <button class="text-sm font-bold text-red-500 hover:text-red-700">Remove</button>
+                </form>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <!-- ============ INVOICES ============ -->
+      {tab === 'invoices' && (
+        <>
+          <h1 class="text-2xl font-black">Invoices</h1>
+          <p class="mt-1 text-sm text-stone-500">Drafts are auto-generated from each booking. Edit and send them when ready.</p>
+          <div class="mt-6 space-y-2">
+            {invRows.length === 0 && <p class="text-sm text-stone-500">No invoices yet.</p>}
+            {invRows.map((inv) => {
+              const b = enriched.find((x) => x.id === inv.bookingId);
+              return (
+                <div class="flex items-center justify-between gap-3 rounded-lg bg-white px-4 py-3 shadow-sm">
+                  <div class="min-w-0">
+                    <p class="font-bold">{inv.number} <span class={`ml-2 rounded-full px-2 py-0.5 text-xs font-bold ${statusBadge[inv.status] ?? 'bg-stone-100 text-stone-500'}`}>{inv.status}</span></p>
+                    <p class="truncate text-sm text-stone-500">
+                      {b ? `${b.dogName} · ${b.service?.name} · ${dayLabel(b.slotStart)}` : `Booking #${inv.bookingId}`}
+                    </p>
+                  </div>
+                  <div class="flex shrink-0 items-center gap-3">
+                    <span class="font-extrabold">{money(inv.totalCents)}</span>
+                    <a href={`/admin/invoices/${inv.id}`} class="rounded-full bg-brand-600 px-4 py-1.5 text-sm font-bold text-white hover:bg-brand-700">Edit / Send</a>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      <!-- ============ SETTINGS ============ -->
+      {tab === 'settings' && (
+        <>
+          <h1 class="text-2xl font-black">Settings</h1>
+          <form method="POST" action="/api/admin/settings" class="mt-6 max-w-xl rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+            <div class="space-y-4">
+              <div>
+                <label class="text-sm font-bold text-stone-700" for="business_name">Business name</label>
+                <input id="business_name" name="business_name" value={settings.business_name ?? ''} class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+              </div>
+              <div>
+                <label class="text-sm font-bold text-stone-700" for="abn">ABN</label>
+                <input id="abn" name="abn" value={settings.abn ?? ''} class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+              </div>
+              <div>
+                <label class="text-sm font-bold text-stone-700" for="invoice_prefix">Invoice prefix</label>
+                <input id="invoice_prefix" name="invoice_prefix" value={settings.invoice_prefix ?? 'INV'} class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+              </div>
+              <div>
+                <label class="text-sm font-bold text-stone-700" for="bank_details">Bank details (shown on invoices)</label>
+                <textarea id="bank_details" name="bank_details" rows="3" placeholder="Account name&#10;BSB&#10;Account number" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2">{settings.bank_details ?? ''}</textarea>
+              </div>
+            </div>
+            <button class="mt-5 rounded-full bg-brand-600 px-6 py-2.5 font-bold text-white hover:bg-brand-700">Save settings</button>
+          </form>
+        </>
+      )}
+    </main>
+  </body>
+</html>

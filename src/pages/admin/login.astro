@@ -1,0 +1,36 @@
+---
+const error = Astro.url.searchParams.get('error');
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <title>Admin login · Winnie & Co</title>
+    <style>
+      @import "./../../styles/global.css";
+    </style>
+  </head>
+  <body class="flex min-h-screen items-center justify-center bg-brand-950 px-4">
+    <div class="w-full max-w-sm">
+      <div class="rounded-2xl bg-white p-8 shadow-xl">
+        <p class="text-3xl text-center">🐾</p>
+        <h1 class="mt-2 text-center text-xl font-extrabold text-stone-900">Winnie &amp; Co</h1>
+        <p class="mb-6 text-center text-sm text-stone-500">Admin sign in</p>
+        {error && <p class="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-600">Incorrect password</p>}
+        <form method="POST" action="/api/admin/login" class="space-y-4">
+          <div>
+            <label class="text-sm font-bold text-stone-700" for="password">Password</label>
+            <input id="password" name="password" type="password" required autofocus class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+          </div>
+          <button type="submit" class="w-full rounded-full bg-brand-600 py-2.5 font-bold text-white hover:bg-brand-700">Sign in</button>
+        </form>
+      </div>
+      <p class="mt-4 text-center text-xs text-brand-200/60"><a href="/" class="hover:underline">← Back to website</a></p>
+    </div>
+  </body>
+</html>

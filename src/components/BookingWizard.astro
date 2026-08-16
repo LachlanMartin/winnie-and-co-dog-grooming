@@ -1,0 +1,331 @@
+---
+import { money } from '../lib/money';
+
+interface Props {
+  services: {
+    id: number; name: string; slug: string; description: string; hasSizes: boolean;
+    priceFlat: number | null; priceS: number | null; priceM: number | null;
+    priceL: number | null; priceXl: number | null;
+  }[];
+  addons: { id: number; name: string; priceCents: number }[];
+  preselect: string | null;
+  sizeLabels: Record<string, string>;
+}
+const { services, addons, preselect, sizeLabels } = Astro.props;
+const sizes = ['small', 'medium', 'large', 'xl'] as const;
+const btn = 'mt-4 rounded-full bg-brand-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed';
+const backBtn = 'mt-4 rounded-full border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-600 transition hover:bg-stone-50';
+---
+
+<div id="wizard" class="mt-8 space-y-6">
+  <fieldset id="step-service" class="pt-6">
+    <legend class="px-1 text-lg font-extrabold text-stone-900">1. Choose a service</legend>
+    <div class="mt-3 grid gap-3">
+      {services.map((s) => (
+        <label data-service-card class="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-stone-200 p-4 transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+          <input type="radio" name="service" value={s.id} data-service={s.slug} class="mt-1 accent-brand-600" />
+          <span class="flex-1">
+            <span class="flex items-center justify-between gap-2">
+              <span class="font-extrabold text-stone-800">{s.name}</span>
+              <span class="text-sm font-bold text-brand-700">
+                {s.hasSizes ? 'From ' + money(Math.min(...[s.priceS, s.priceM, s.priceL, s.priceXl].filter((n): n is number => n != null))) : money(s.priceFlat ?? 0)}
+              </span>
+            </span>
+            <span class="mt-1 block text-sm text-stone-500">{s.description}</span>
+          </span>
+        </label>
+      ))}
+    </div>
+    <button type="button" id="next-service" disabled class={btn}>Next</button>
+  </fieldset>
+
+  <fieldset id="step-size" class="hidden pt-6">
+    <legend class="px-1 text-lg font-extrabold text-stone-900">2. Choose your dog's size</legend>
+    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+      {sizes.map((z) => (
+        <label class="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-stone-200 p-4 transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+          <input type="radio" name="size" value={z} class="accent-brand-600" />
+          <span class="font-bold text-stone-800">{sizeLabels[z]}</span>
+        </label>
+      ))}
+    </div>
+    <div class="flex gap-3">
+      <button type="button" id="back-to-service" class={backBtn}>&larr; Back</button>
+      <button type="button" id="next-size" disabled class={btn}>Next</button>
+    </div>
+  </fieldset>
+
+  <fieldset id="step-date" class="hidden pt-6">
+    <legend class="px-1 text-lg font-extrabold text-stone-900">3. Choose a day</legend>
+    <div class="mt-3 flex items-center justify-between">
+      <button type="button" id="cal-prev" class="rounded-full border border-stone-300 px-3 py-1.5 text-stone-600 transition hover:bg-stone-50" aria-label="Previous month">&lsaquo;</button>
+      <span id="cal-month" class="font-bold text-stone-800"></span>
+      <button type="button" id="cal-next" class="rounded-full border border-stone-300 px-3 py-1.5 text-stone-600 transition hover:bg-stone-50" aria-label="Next month">&rsaquo;</button>
+    </div>
+    <div class="mt-2 grid grid-cols-7 gap-1 text-center text-xs font-bold text-stone-400">
+      <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+    </div>
+    <div id="cal-grid" class="mt-1 grid grid-cols-7 gap-1"></div>
+    <p id="cal-hint" class="mt-2 hidden text-sm text-stone-500">No openings in this month — try another month.</p>
+    <div class="flex gap-3">
+      <button type="button" id="back-to-size" class={backBtn}>&larr; Back</button>
+      <button type="button" id="next-date" disabled class={btn}>Next</button>
+    </div>
+  </fieldset>
+
+  <fieldset id="step-slot" class="hidden pt-6">
+    <legend class="px-1 text-lg font-extrabold text-stone-900">4. Choose a time</legend>
+    <div id="slot-grid" class="mt-3 flex flex-wrap gap-2"></div>
+    <p id="slot-empty" class="mt-3 hidden text-sm text-stone-500">No times available on this day — go back and try another day.</p>
+    <div class="flex gap-3">
+      <button type="button" id="back-to-date" class={backBtn}>&larr; Back</button>
+      <button type="button" id="next-slot" disabled class={btn}>Next</button>
+    </div>
+  </fieldset>
+
+  <fieldset id="step-details" class="hidden pt-6">
+    <legend class="px-1 text-lg font-extrabold text-stone-900">5. Your details</legend>
+    <form id="booking-form" class="mt-3 grid gap-4 sm:grid-cols-2">
+      <input type="hidden" name="service" id="f-service" />
+      <input type="hidden" name="size" id="f-size" />
+      <input type="hidden" name="start" id="f-start" />
+
+      <div>
+        <label class="text-sm font-bold text-stone-700" for="dog_name">Dog's name *</label>
+        <input id="dog_name" name="dog_name" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+      </div>
+      <div>
+        <label class="text-sm font-bold text-stone-700" for="dog_breed">Breed</label>
+        <input id="dog_breed" name="dog_breed" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+      </div>
+
+      <div class="sm:col-span-2">
+        <p class="text-sm font-bold text-stone-700">Add-ons</p>
+        <div class="mt-2 grid gap-2 sm:grid-cols-2">
+          {addons.map((a) => (
+            <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-stone-200 px-3 py-2 text-sm">
+              <input type="checkbox" name="addon" value={a.id} class="accent-brand-600" />
+              <span class="flex-1">{a.name}</span>
+              <span class="font-bold text-brand-700">{money(a.priceCents)}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div class="sm:col-span-2">
+        <label class="text-sm font-bold text-stone-700" for="address">Address *</label>
+        <input id="address" name="address" required placeholder="Street address" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+      </div>
+      <div>
+        <label class="text-sm font-bold text-stone-700" for="suburb">Suburb *</label>
+        <input id="suburb" name="suburb" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+      </div>
+      <div class="flex items-end text-xs text-stone-500">
+        Mobile service — free within 10&nbsp;km of Berwick; a travel fee may apply further out.
+      </div>
+
+      <div>
+        <label class="text-sm font-bold text-stone-700" for="customer_name">Your name *</label>
+        <input id="customer_name" name="customer_name" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+      </div>
+      <div>
+        <label class="text-sm font-bold text-stone-700" for="customer_phone">Phone *</label>
+        <input id="customer_phone" name="customer_phone" required type="tel" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+      </div>
+      <div class="sm:col-span-2">
+        <label class="text-sm font-bold text-stone-700" for="customer_email">Email *</label>
+        <input id="customer_email" name="customer_email" required type="email" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+      </div>
+      <div class="sm:col-span-2">
+        <label class="text-sm font-bold text-stone-700" for="notes">Notes for Alisha</label>
+        <textarea id="notes" name="notes" rows="3" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" placeholder="Matted coat, nervous dog, behavioural quirks, parking…"></textarea>
+      </div>
+
+      <div class="sm:col-span-2">
+        <div class="flex items-center gap-3">
+          <button type="button" id="back-to-slot" class={backBtn}>&larr; Back</button>
+          <button type="submit" class="rounded-full bg-brand-600 px-8 py-3 font-bold text-white transition hover:bg-brand-700">Send booking request</button>
+        </div>
+        <p id="form-error" class="mt-3 hidden text-sm font-semibold text-red-600"></p>
+      </div>
+    </form>
+  </fieldset>
+</div>
+
+<script define:vars={{ services, preselect }}>
+const $ = (sel) => document.querySelector(sel);
+const state = { service: null, serviceHasSizes: false, size: null, date: null, start: null };
+
+const steps = { service: $('#step-service'), size: $('#step-size'), date: $('#step-date'), slot: $('#step-slot'), details: $('#step-details') };
+const slotGrid = $('#slot-grid'), slotEmpty = $('#slot-empty'), formError = $('#form-error');
+const calGrid = $('#cal-grid'), calMonthLabel = $('#cal-month'), calHint = $('#cal-hint');
+const nextService = $('#next-service'), nextSize = $('#next-size'), nextDate = $('#next-date'), nextSlot = $('#next-slot');
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+let calYear, calMonth;
+const calDays = new Map();
+
+function melParts() {
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()).split('-');
+  return { y: Number(p[0]), m: Number(p[1]) - 1, d: Number(p[2]) };
+}
+function resetMonth() { const n = melParts(); calYear = n.y; calMonth = n.m; }
+
+function showStep(name) {
+  Object.keys(steps).forEach((k) => steps[k].classList.add('hidden'));
+  steps[name].classList.remove('hidden');
+  steps[name].scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function loadSlots() {
+  const query = new URLSearchParams({ service: String(state.service), date: state.date });
+  if (state.serviceHasSizes && state.size) query.set('size', state.size);
+  slotGrid.innerHTML = '';
+  slotEmpty.classList.add('hidden');
+  nextSlot.disabled = true;
+  const res = await fetch('/api/slots?' + query.toString());
+  const data = await res.json();
+  const fmt = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: 'numeric', minute: '2-digit' });
+  if (!data.slots || !data.slots.length) { slotEmpty.classList.remove('hidden'); return; }
+  data.slots.forEach((s) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'rounded-xl border-2 border-stone-200 px-5 py-2.5 text-sm font-bold text-stone-700 transition hover:border-brand-400';
+    b.textContent = fmt.format(new Date(s.start));
+    b.addEventListener('click', () => {
+      state.start = s.start;
+      slotGrid.querySelectorAll('button').forEach((x) => x.classList.remove('border-brand-500', 'bg-brand-50'));
+      b.classList.add('border-brand-500', 'bg-brand-50');
+      $('#f-start').value = s.start;
+      nextSlot.disabled = false;
+    });
+    slotGrid.appendChild(b);
+  });
+}
+
+async function loadCalendar() {
+  const query = new URLSearchParams({ service: String(state.service), month: calYear + '-' + String(calMonth + 1).padStart(2, '0') });
+  if (state.serviceHasSizes && state.size) query.set('size', state.size);
+  calDays.clear();
+  const res = await fetch('/api/availability?' + query.toString());
+  const data = await res.json();
+  (data.days || []).forEach((dd) => calDays.set(dd.date, dd.slots));
+  renderCalendar();
+}
+
+function renderCalendar() {
+  calMonthLabel.textContent = MONTHS[calMonth] + ' ' + calYear;
+  calGrid.innerHTML = '';
+  const today = melParts();
+  const todayStr = String(today.y) + '-' + String(today.m + 1).padStart(2, '0') + '-' + String(today.d).padStart(2, '0');
+  const offset = (new Date(Date.UTC(calYear, calMonth, 1)).getUTCDay() + 6) % 7; // Monday-first
+  const dim = new Date(Date.UTC(calYear, calMonth + 1, 0)).getUTCDate();
+  let any = false;
+  for (let i = 0; i < offset; i++) calGrid.appendChild(document.createElement('div'));
+  for (let d = 1; d <= dim; d++) {
+    const ds = calYear + '-' + String(calMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.date = ds;
+    btn.textContent = String(d);
+    const avail = (calDays.get(ds) || 0) > 0 && ds >= todayStr;
+    btn.className = 'rounded-lg py-2 text-sm font-bold transition ' +
+      (avail ? 'bg-brand-50 text-brand-800 hover:bg-brand-100 aria-checked:bg-brand-500 aria-checked:text-white' : 'cursor-not-allowed text-stone-300');
+    if (avail) {
+      if (ds === state.date) btn.setAttribute('aria-checked', 'true');
+      btn.addEventListener('click', () => {
+        state.date = ds;
+        state.start = null;
+        calGrid.querySelectorAll('button[data-date]').forEach((b) => b.removeAttribute('aria-checked'));
+        btn.setAttribute('aria-checked', 'true');
+        nextDate.disabled = false;
+      });
+      any = true;
+    }
+    calGrid.appendChild(btn);
+  }
+  calHint.classList.toggle('hidden', any);
+}
+
+function enterDateStep() {
+  showStep('date');
+  loadCalendar();
+}
+
+function advanceFromService() {
+  if (state.serviceHasSizes) showStep('size');
+  else enterDateStep();
+}
+
+document.querySelectorAll('[data-service-card] input[name="service"]').forEach((input) => {
+  input.addEventListener('change', () => {
+    const svc = services.find((s) => s.slug === input.getAttribute('data-service'));
+    if (!svc) return;
+    state.service = svc.id;
+    state.serviceHasSizes = svc.hasSizes;
+    state.size = null;
+    state.date = null;
+    state.start = null;
+    $('#f-service').value = String(svc.id);
+    resetMonth();
+    nextService.disabled = false;
+  });
+});
+nextService.addEventListener('click', advanceFromService);
+
+document.querySelectorAll('input[name="size"]').forEach((input) => {
+  input.addEventListener('change', () => {
+    state.size = input.value;
+    state.date = null;
+    state.start = null;
+    $('#f-size').value = input.value;
+    nextSize.disabled = false;
+  });
+});
+nextSize.addEventListener('click', () => {
+  resetMonth();
+  enterDateStep();
+});
+
+$('#cal-prev').addEventListener('click', () => {
+  calMonth--;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  loadCalendar();
+});
+$('#cal-next').addEventListener('click', () => {
+  calMonth++;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  loadCalendar();
+});
+
+nextDate.addEventListener('click', async () => { await loadSlots(); showStep('slot'); });
+
+nextSlot.addEventListener('click', () => showStep('details'));
+
+$('#back-to-service').addEventListener('click', () => showStep('service'));
+$('#back-to-size').addEventListener('click', () => showStep('size'));
+$('#back-to-date').addEventListener('click', () => showStep('date'));
+$('#back-to-slot').addEventListener('click', () => showStep('slot'));
+
+$('#booking-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!state.start) return;
+  formError.classList.add('hidden');
+  const form = e.target;
+  const res = await fetch('/api/bookings', { method: 'POST', body: new FormData(form) });
+  const data = await res.json();
+  if (data.ok) {
+    window.location.href = data.redirect;
+  } else {
+    formError.textContent = data.error || 'Something went wrong. Please try again.';
+    formError.classList.remove('hidden');
+  }
+});
+
+resetMonth();
+if (preselect) {
+  const input = document.querySelector('[data-service="' + preselect + '"]');
+  if (input) { input.click(); advanceFromService(); }
+}
+
+</script>

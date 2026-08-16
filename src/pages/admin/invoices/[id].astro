@@ -1,0 +1,104 @@
+---
+import { and, asc, eq } from 'drizzle-orm';
+import { db } from '../../../lib/db';
+import { bookings, invoiceItems, invoices, services } from '../../../../db/schema';
+import { money, dollarsToCents } from '../../../lib/money';
+import { dayLabel } from '../../../lib/tz';
+
+const id = Number(Astro.params.id);
+const [inv] = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
+const items = inv ? await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, id)).orderBy(asc(invoiceItems.sortOrder)) : [];
+const booking = inv ? (await db.select().from(bookings).where(eq(bookings.id, inv.bookingId)).limit(1))[0] : undefined;
+const service = booking ? (await db.select().from(services).where(eq(services.id, booking.serviceId)).limit(1))[0] : undefined;
+
+if (!inv) {
+  return Astro.redirect('/admin');
+}
+const total = items.reduce((s, i) => s + i.unitPriceCents * i.quantity, 0);
+const dueDate = inv.dueDate ? new Date(`${inv.dueDate}T00:00:00`) : null;
+const dueDateInput = dueDate ? dueDate.toISOString().slice(0, 10) : '';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <title>Invoice {inv.number} · Admin</title>
+    <style>
+      @import "./../../../styles/global.css";
+    </style>
+  </head>
+  <body class="bg-stone-100 text-stone-800">
+    <header class="border-b border-stone-200 bg-white">
+      <div class="mx-auto flex max-w-4xl items-center justify-between px-4 py-3 sm:px-6">
+        <a href="/admin?tab=invoices" class="text-sm font-bold text-stone-500 hover:text-stone-800">&larr; Back to invoices</a>
+        <p class="font-extrabold text-brand-800">Invoice {inv.number}</p>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+      <div class="rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+        <div class="flex flex-wrap items-start justify-between gap-4 border-b border-stone-200 pb-4">
+          <div>
+            <p class="text-lg font-extrabold">{booking.customerName} — {booking.dogName}</p>
+            <p class="text-sm text-stone-500">
+              {service?.name}{booking.size ? ` · ${booking.size}` : ''} · {dayLabel(booking.slotStart)}
+            </p>
+          </div>
+          <p class="text-right">
+            <span class={`rounded-full px-3 py-1 text-xs font-bold uppercase ${inv.status === 'paid' ? 'bg-green-100 text-green-700' : inv.status === 'sent' ? 'bg-brand-100 text-brand-800' : inv.status === 'void' ? 'bg-red-100 text-red-600' : 'bg-stone-100 text-stone-600'}`}>
+              {inv.status}
+            </span>
+          </p>
+        </div>
+
+        <form method="POST" action={`/api/admin/invoices/${inv.id}`} class="mt-5">
+          <div class="space-y-2">
+            {items.map((i, idx) => (
+              <div key={i.id} class="flex items-center gap-2">
+                <input type="hidden" name="item_id" value={i.id} />
+                <input name="desc" value={i.description} placeholder="Description" class="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+                <input name="qty" value={i.quantity} type="number" min="1" class="w-16 rounded-lg border border-stone-300 px-2 py-2 text-sm" />
+                <input name="price" value={(i.unitPriceCents / 100).toFixed(2)} type="number" step="0.01" min="0" class="w-28 rounded-lg border border-stone-300 px-2 py-2 text-sm text-right" />
+                <button formaction={`/api/admin/invoices/${inv.id}`} name="remove" value={i.id} class="text-sm font-bold text-red-500 hover:text-red-700" title="Remove line">✕</button>
+              </div>
+            ))}
+          </div>
+
+          <div class="mt-4 flex items-center gap-3">
+            <button formAction={`/api/admin/invoices/${inv.id}`} name="action" value="add" class="rounded-full border border-stone-300 px-4 py-1.5 text-sm font-bold text-stone-600 hover:bg-stone-50">+ Add line</button>
+          </div>
+
+          <div class="mt-6 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="text-sm font-bold text-stone-700" for="notes">Notes</label>
+              <textarea id="notes" name="notes" rows="3" placeholder="Payment terms, fee explanations (e.g. fleas found +$15)…" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm">{inv.notes}</textarea>
+            </div>
+            <div>
+              <label class="text-sm font-bold text-stone-700" for="due_date">Due date</label>
+              <input id="due_date" name="due_date" type="date" value={dueDateInput} class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+              <p class="mt-4 text-right text-lg font-extrabold">Total: {money(total)}</p>
+            </div>
+          </div>
+
+          <div class="mt-6 flex flex-wrap gap-3 border-t border-stone-200 pt-5">
+            <button name="action" value="save" class="rounded-full bg-stone-200 px-5 py-2 text-sm font-bold text-stone-700 hover:bg-stone-300">Save draft</button>
+            {inv.status !== 'paid' && inv.status !== 'void' && (
+              <button name="action" value="send" class="rounded-full bg-brand-600 px-6 py-2 text-sm font-bold text-white hover:bg-brand-700">Send to customer</button>
+            )}
+            {inv.status !== 'paid' && inv.status !== 'void' && (
+              <button name="action" value="paid" class="rounded-full bg-green-600 px-5 py-2 text-sm font-bold text-white hover:bg-green-700">Mark paid</button>
+            )}
+            {inv.status !== 'void' && (
+              <button name="action" value="void" class="ml-auto rounded-full border border-stone-300 px-5 py-2 text-sm font-bold text-stone-500 hover:bg-stone-50">Void</button>
+            )}
+          </div>
+        </form>
+      </div>
+    </main>
+  </body>
+</html>

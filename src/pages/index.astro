@@ -1,0 +1,40 @@
+---
+import { asc, eq } from 'drizzle-orm';
+import Base from '../layouts/Base.astro';
+import { db } from '../lib/db';
+import { services } from '../../db/schema';
+import { priceFor } from '../lib/availability';
+import { money } from '../lib/money';
+
+const allServices = await db.select().from(services).where(eq(services.active, true)).orderBy(asc(services.sortOrder));
+const SIZES = ['small', 'medium', 'large', 'xl'] as const;
+const fromPrice = (s: (typeof allServices)[number]) =>
+  s.hasSizes ? money(Math.min(...SIZES.map((z) => priceFor(s, z)))) : money(s.priceFlat ?? 0);
+---
+
+<Base>
+  <section class="mx-auto max-w-2xl px-4 py-16 text-center sm:px-6 sm:py-20">
+    <img src="/images/logo.png" alt="Winnie & Co Dog Grooming" class="mx-auto h-48 w-auto" />
+    <img src="/images/under-logo.png" alt="" class="mx-auto mt-1 w-[75%]" />
+
+    <div class="mt-6 flex items-center gap-3" aria-hidden="true">
+      <span class="h-px flex-1 bg-brand-300"></span>
+      <img src="/images/paw.png" alt="" class="h-5 w-5" />
+      <span class="h-px flex-1 bg-brand-300"></span>
+    </div>
+
+    <h1 class="mt-4 text-3xl font-black text-stone-900">Mobile dog grooming in Berwick &amp; surrounds</h1>
+    <p class="mt-3 text-lg text-stone-600">Gentle, one-on-one care for dogs of every size and temperament — brought to your door.</p>
+
+    <a href="/book" class="mt-8 inline-block rounded-full bg-brand-600 px-8 py-3 text-base font-bold text-white transition hover:bg-brand-700">Book a groom</a>
+
+    <ul class="mx-auto mt-12 max-w-md space-y-2 text-left">
+      {allServices.map((s) => (
+        <li class="flex items-baseline justify-between gap-4 border-b border-stone-200 pb-2">
+          <span class="font-semibold text-stone-800">{s.name}</span>
+          <span class="text-stone-500">{s.hasSizes ? `from ${fromPrice(s)}` : fromPrice(s)}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+</Base>
