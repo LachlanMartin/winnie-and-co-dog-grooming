@@ -1,0 +1,51 @@
+---
+import Base from '../layouts/Base.astro';
+
+const sections = [
+  {
+    title: '1. Bookings & confirmation',
+    body: 'Submitting a booking is a request, not a confirmed appointment. Appointments are only confirmed once Winnie & Co approves your request, which we do by email. If we are unable to accommodate the time you requested, we will be in touch to arrange an alternative.',
+  },
+  {
+    title: '2. Services & pricing',
+    body: 'Prices shown are a "from" guide. The final price depends on your dog\'s breed, coat condition, size and temperament, and may be higher. Additional fees may apply for severe matting, fleas or ticks, extra grooming time, sensitive-skin shampoo, or travel beyond 10 km of Berwick. Where possible, any additional fees are discussed with you before grooming begins; where they are only discovered during grooming, they are noted on your invoice.',
+  },
+  {
+    title: '3. Health & safety',
+    body: 'Please let us know before your appointment if your dog has fleas, ticks, a contagious condition, or is feeling unwell. Grooming may be adjusted, stopped or declined for health or safety reasons, and veterinary advice may be recommended where necessary. For the safety of your dog and the groomer, aggressive behaviour cannot be accommodated. If your dog\'s coat is severely matted, it may be necessary to clip the coat short for your dog\'s comfort and safety.',
+  },
+  {
+    title: '4. Cancellations',
+    body: 'If you need to change or cancel your appointment, please let us know as soon as possible so the time can be offered to another client.',
+  },
+  {
+    title: '5. Payments',
+    body: 'An invoice is issued for each appointment and is payable by bank transfer or as otherwise agreed. Please quote your invoice number as the payment reference.',
+  },
+  {
+    title: '6. Liability',
+    body: 'Grooming is carried out with professional equipment and reasonable care, but all grooming carries some risk, including minor nicks or matting that requires a short clip. You are responsible for providing accurate information about your dog\'s health, coat and temperament. Winnie & Co is not liable for pre-existing conditions, or for issues arising from health conditions or behaviour that were not disclosed.',
+  },
+  {
+    title: '7. Contact',
+    body: 'Questions about these terms? Call 0408 700 265 or email alisha@winnieandcodoggrooming.com.au.',
+  },
+];
+---
+
+<Base title="Terms & Conditions · Winnie & Co Dog Grooming">
+  <section class="mx-auto max-w-2xl px-4 py-12 sm:px-6">
+    <a href="/" class="text-sm font-semibold text-brand-600 hover:text-brand-800">&larr; Back home</a>
+    <h1 class="mt-2 text-3xl font-black text-stone-900">Terms &amp; Conditions</h1>
+    <p class="mt-1 text-sm text-stone-500">Winnie &amp; Co Dog Grooming</p>
+
+    <div class="mt-8 space-y-6">
+      {sections.map((s) => (
+        <div>
+          <h2 class="text-lg font-extrabold text-brand-800">{s.title}</h2>
+          <p class="mt-1 leading-relaxed text-stone-600">{s.body}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+</Base>

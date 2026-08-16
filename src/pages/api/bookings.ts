@@ -23,6 +23,9 @@ export const POST: APIRoute = async ({ request }) => {
 
   if (!serviceId || !customerName || !dogName) return json({ ok: false, error: 'Please fill in all required fields.' });
   if (!EMAIL_RE.test(customerEmail)) return json({ ok: false, error: 'Please enter a valid email address.' });
+  if (form.get('agree') !== 'on') {
+    return json({ ok: false, error: 'Please agree to the Terms & Conditions to continue.' });
+  }
 
   const [service] = await db.select().from(services).where(eq(services.id, serviceId)).limit(1);
   if (!service) return json({ ok: false, error: 'Unknown service.' });
