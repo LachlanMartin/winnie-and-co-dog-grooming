@@ -21,10 +21,10 @@ async function send(to: string, subject: string, html: string) {
 }
 
 const shell = (body: string) => `
-  <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1f2937;line-height:1.5">
-    <div style="padding:20px 0;border-bottom:2px solid #f59e0b">
-      <span style="font-weight:800;font-size:20px;color:#92400e">Winnie &amp; Co</span>
-      <span style="color:#9a3412">Dog Grooming</span>
+  <div style="font-family:Nunito,Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#1f2937;line-height:1.5">
+    <div style="padding:20px 0;border-bottom:2px solid #9be9fd">
+      <span style="font-weight:800;font-size:20px;color:#0b5a87">Winnie &amp; Co</span>
+      <span style="color:#12a7e4">Dog Grooming</span>
     </div>
     <div style="padding:24px 0">${body}</div>
     <div style="padding:16px 0;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280">
@@ -118,7 +118,7 @@ export async function emailInvoiceSent(
        </table>
        ${inv.notes ? `<p><b>Notes:</b> ${inv.notes}</p>` : ''}
        ${bankDetails ? `<p><b>Payment details:</b><br>${bankDetails.replace(/\n/g, '<br>')}</p>` : ''}
-       <p><a href="${SITE}/invoice/${inv.token}" style="display:inline-block;background:#d97706;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">View invoice</a></p>
+       <p><a href="${SITE}/invoice/${inv.token}" style="display:inline-block;background:#0789c5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">View invoice</a></p>
        <p style="font-size:13px;color:#6b7280">Please pay by ${inv.dueDate ?? 'your appointment date'}. Thank you!</p>`,
     ),
   );
