@@ -2,7 +2,30 @@
 
 Booking + invoicing website for Winnie & Co, a mobile dog grooming business in Berwick, VIC.
 
-Customers book a grooming slot (which the owner approves); the system auto-generates a draft invoice from the booking, the owner edits it, and sends it by email. Payments are handled offline — the invoice carries the owner's bank details.
+## How it works
+
+1. Customers pick a service and dog size, then book a slot that respects the owner's working hours, blockouts and existing bookings.
+2. Bookings land `pending`; the owner approves or declines them from `/admin`.
+3. Each approved booking auto-generates a draft invoice (service price + add-ons + travel).
+4. The owner edits it line-by-line and emails the customer a link to a printable invoice page.
+5. Payment happens offline — the invoice carries the owner's bank details.
+
+## Features
+
+- **Booking wizard** — service → size → day → free slot → dog/contact details. Slots respect working hours, the biweekly Saturday rule, blockouts, and existing bookings.
+- **Owner approval** — bookings land `pending`; the owner approves/declines from `/admin`. Approved bookings get a confirmation email.
+- **Invoices** — auto-generated as a draft from each booking (service price + add-ons + travel line), editable line-by-line in `/admin/invoices/[id]`, sent to the customer as a link to a printable page. Statuses: draft → sent → paid.
+- **Availability admin** — weekly hours, biweekly Saturday anchor, and one-off day/time blocks.
+- **Email** — request-received, new-booking alert, confirmed, declined, invoice-sent.
+
+## Project structure
+
+```
+src/pages/       Routes — public site, /admin, API endpoints
+src/components/  Astro components (BookingWizard, Footer)
+src/lib/         Auth, availability engine, db, email, invoice, money, timezone helpers
+db/              Drizzle schema, migrations, seed
+```
 
 ## Stack
 
@@ -57,14 +80,6 @@ npx tsx src/lib/availability.check.ts   # availability engine self-check
 4. Run migrations against the Neon DB: set `DATABASE_URL` locally to the Neon URL, then `npm run db:migrate`, then `npm run db:seed`.
 
 > `db:seed` fills in services, add-ons and working hours. Re-run it on an empty DB only. The biweekly-Saturday anchor and bank details are editable in `/admin`.
-
-## Features
-
-- **Booking wizard** — service → size → day → free slot → dog/contact details. Slots respect working hours, the biweekly Saturday rule, blockouts, and existing bookings.
-- **Owner approval** — bookings land `pending`; the owner approves/declines from `/admin`. Approved bookings get a confirmation email.
-- **Invoices** — auto-generated as a draft from each booking (service price + add-ons + travel line), editable line-by-line in `/admin/invoices/[id]`, sent to the customer as a link to a printable page. Statuses: draft → sent → paid.
-- **Availability admin** — weekly hours, biweekly Saturday anchor, and one-off day/time blocks.
-- **Email** — request-received, new-booking alert, confirmed, declined, invoice-sent.
 
 ## Data model
 
