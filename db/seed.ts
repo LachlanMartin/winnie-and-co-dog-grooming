@@ -17,7 +17,7 @@ await db.insert(services).values([
     name: 'Full Groom',
     slug: 'full-groom',
     hasSizes: true,
-    priceS: 9000, priceM: 11000, priceL: 13000, priceXl: 15000,
+    priceS: 9000, priceM: 10000, priceL: 11000, priceXl: 12000,
     durationS: 120, durationM: 150, durationL: 180, durationXl: 210,
     sortOrder: 2,
     description:
@@ -27,7 +27,7 @@ await db.insert(services).values([
     name: 'Tidy Groom',
     slug: 'tidy-groom',
     hasSizes: true,
-    priceS: 8000, priceM: 9000, priceL: 11000, priceXl: 12000,
+    priceS: 8000, priceM: 9000, priceL: 10000, priceXl: 11000,
     durationS: 90, durationM: 120, durationL: 150, durationXl: 180,
     sortOrder: 3,
     description:
@@ -37,7 +37,7 @@ await db.insert(services).values([
     name: 'Short Coat Bath',
     slug: 'short-coat-bath',
     hasSizes: true,
-    priceS: 7500, priceM: 9000, priceL: 10500, priceXl: 12000,
+    priceS: 7000, priceM: 8000, priceL: 9000, priceXl: 10000,
     durationS: 60, durationM: 75, durationL: 90, durationXl: 120,
     sortOrder: 4,
     description:
@@ -47,7 +47,7 @@ await db.insert(services).values([
     name: 'Long Coat Deshedding',
     slug: 'long-coat-deshedding',
     hasSizes: true,
-    priceS: 8000, priceM: 11000, priceL: 13000, priceXl: 15000,
+    priceS: 8000, priceM: 9000, priceL: 10000, priceXl: 11000,
     durationS: 120, durationM: 150, durationL: 180, durationXl: 210,
     sortOrder: 5,
     description:
