@@ -72,6 +72,26 @@ export const POST: APIRoute = async ({ request, redirect, params }) => {
     return redirect(back);
   }
 
+  if (action === 'delete') {
+    if (!order.length || order.some((b) => b.status !== 'cancelled')) {
+      return fail('Only cancelled appointments can be deleted.');
+    }
+    const ids = order.map((b) => b.id);
+    await db.transaction(async (tx) => {
+      const invRows = await tx
+        .select({ id: invoices.id })
+        .from(invoices)
+        .where(inArray(invoices.bookingId, ids));
+      const invoiceIds = invRows.map((r) => r.id);
+      if (invoiceIds.length) {
+        await tx.delete(invoiceItems).where(inArray(invoiceItems.invoiceId, invoiceIds));
+        await tx.delete(invoices).where(inArray(invoices.id, invoiceIds));
+      }
+      await tx.delete(bookings).where(inArray(bookings.id, ids));
+    });
+    return redirect(`${back}&deleted=1`);
+  }
+
   if (action === 'edit') {
     const date = String(form.get('date') ?? '');
     const time = String(form.get('time') ?? '');

@@ -22,6 +22,7 @@ import AdminServices from '../../components/AdminServices.astro';
 const tab = Astro.url.searchParams.get('tab') ?? 'calendar';
 const error = Astro.url.searchParams.get('error');
 const saved = Astro.url.searchParams.get('saved');
+const deleted = Astro.url.searchParams.get('deleted');
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const [serviceRows, addonRows, hourRows, blockRows] = await Promise.all([
@@ -239,6 +240,9 @@ const tabs = [
           {saved && (
             <p class="mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">Saved.</p>
           )}
+          {deleted && (
+            <p class="mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">Cancelled appointment and linked invoices deleted.</p>
+          )}
 
           <div class="mt-4">
             <AdminCreateBooking services={serviceRows} addons={addonRows} sizeLabels={SIZE_LABELS} />
@@ -265,12 +269,24 @@ const tabs = [
             <section class="mt-8">
               <h2 class="text-lg font-extrabold text-stone-400">Past &amp; cancelled</h2>
               <div class="mt-3 space-y-2">
-                {past.slice(0, 20).map((o) => (
-                  <div class="flex items-center justify-between rounded-lg bg-white px-4 py-2 text-sm text-stone-500">
+                {past.map((o) => (
+                  <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-4 py-3 text-sm text-stone-500 shadow-sm">
                     <span>
                       {dayLabel(o.lead.slotStart)} · {o.bookings.map((b) => b.dogName).join(' & ')} · {o.lead.service?.name}
                     </span>
-                    <span class={`rounded-full px-2 py-0.5 text-xs font-bold ${statusBadge[o.status]}`}>{o.status}</span>
+                    <div class="flex shrink-0 items-center gap-3">
+                      <span class={`rounded-full px-2 py-0.5 text-xs font-bold ${statusBadge[o.status]}`}>{o.status}</span>
+                      {o.status === 'cancelled' && (
+                        <form
+                          method="POST"
+                          action={`/api/admin/bookings/${o.lead.id}`}
+                          onsubmit="return confirm('Delete this cancelled appointment and all its linked invoices? This cannot be undone.');"
+                        >
+                          <input type="hidden" name="action" value="delete" />
+                          <button class="rounded-lg px-2.5 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-50 hover:text-red-700">Delete</button>
+                        </form>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

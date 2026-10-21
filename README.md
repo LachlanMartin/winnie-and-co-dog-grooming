@@ -16,7 +16,7 @@ Booking + invoicing website for Winnie & Co, a mobile dog grooming business in B
 - **Owner approval** — bookings land `pending`; the owner approves/declines the whole order from `/admin`. Approved bookings get a confirmation email.
 - **Admin calendar** — weekly schedule showing working hours, pending/confirmed bookings, and blocked time. Click a booking to edit, approve, deny, or cancel it; click an open time to start a booking.
 - **Services & pricing** — add, edit, or deactivate groom services and add-ons; set size-based prices and durations. Changes apply to new bookings, while existing bookings and invoices stay intact.
-- **Admin bookings** — create a confirmed booking from `/admin`, or edit/move an existing request. Moving a family re-books every dog back-to-back and emails the customer.
+- **Admin bookings** — create a confirmed booking from `/admin`, or edit/move an existing request. Moving a family re-books every dog back-to-back and emails the customer. Cancelled orders can be permanently deleted with their linked invoices.
 - **Invoices** — auto-generated as a draft from each booking (service price + add-ons + travel line), editable line-by-line in `/admin/invoices/[id]`, sent to the customer as a link to a printable page. Statuses: draft → sent → paid.
 - **Availability admin** — weekly hours and one-off day/time blocks.
 - **Email** — request-received, new-booking alert, confirmed, declined, invoice-sent.
