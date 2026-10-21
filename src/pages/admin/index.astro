@@ -12,7 +12,8 @@ import {
 import { getSettings } from '../../lib/settings';
 import { money } from '../../lib/money';
 import { dayLabel, dateStr, timeOfDay } from '../../lib/tz';
-import { SIZE_LABELS } from '../../lib/availability';
+import { durationFor, SIZE_LABELS, SIZES } from '../../lib/availability';
+import type { Size } from '../../lib/availability';
 import AdminBookingCard from '../../components/AdminBookingCard.astro';
 import AdminCreateBooking from '../../components/AdminCreateBooking.astro';
 import AdminCalendar from '../../components/AdminCalendar.astro';
@@ -100,6 +101,9 @@ const calendarEvents = orders
         breed: b.dogBreed,
         service: b.service?.name ?? 'Service',
         size: b.size ?? '',
+        duration: b.service
+          ? durationFor(b.service, SIZES.includes(b.size as Size) ? (b.size as Size) : null)
+          : 0,
       })),
     };
   });
