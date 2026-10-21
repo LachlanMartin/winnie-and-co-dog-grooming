@@ -4,6 +4,7 @@ import { db } from '../../../lib/db';
 import { workingHours } from '../../../../db/schema';
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export const POST: APIRoute = async ({ request, redirect }) => {
   const form = await request.formData();
@@ -15,10 +16,10 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     const open = String(form.get(`open_${day}`) ?? '').trim();
     const close = String(form.get(`close_${day}`) ?? '').trim();
     if (!TIME_RE.test(open) || !TIME_RE.test(close)) {
-      return redirect(`${back}&error=${encodeURIComponent('Please enter a valid opening and closing time for every enabled day.')}`);
+      return redirect(`${back}&error=${encodeURIComponent(`${DAYS[day]}: enter valid 24-hour opening and closing times, e.g. 08:30–16:30.`)}`);
     }
     if (open >= close) {
-      return redirect(`${back}&error=${encodeURIComponent('Closing time must be after opening time.')}`);
+      return redirect(`${back}&error=${encodeURIComponent(`${DAYS[day]}: closing time must be after opening time.`)}`);
     }
     desired.push({ day, open, close });
   }
