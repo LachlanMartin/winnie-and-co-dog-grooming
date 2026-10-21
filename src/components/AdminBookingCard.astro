@@ -1,0 +1,104 @@
+---
+import type { Booking, Service } from '../../db/schema';
+import { dateStr, dayLabel, timeOfDay } from '../lib/tz';
+
+type EnrichedBooking = Booking & { service?: Service; addonNames: string[] };
+
+interface Props {
+  bookings: EnrichedBooking[];
+  mode: 'pending' | 'confirmed';
+}
+const { bookings, mode } = Astro.props;
+const lead = bookings[0];
+const addonNames = [...new Set(bookings.flatMap((b) => b.addonNames))];
+const dogNames = bookings.map((b) => b.dogName).join(' & ');
+---
+
+<div class="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      <p class="font-extrabold">
+        {lead.customerName} — {dogNames}
+        {bookings.length > 1 && <span class="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-800">{bookings.length} dogs</span>}
+      </p>
+      {bookings.map((b) => (
+        <p class="text-sm text-stone-500">
+          {b.dogName}: {b.service?.name}{b.size ? ` · ${b.size}` : ''} · {dayLabel(b.slotStart)} at {timeOfDay(b.slotStart)}
+        </p>
+      ))}
+      <p class="mt-1 text-sm text-stone-500">{lead.customerEmail} · {lead.customerPhone}</p>
+      <p class="text-sm text-stone-500">{lead.address}{lead.suburb ? `, ${lead.suburb}` : ''}</p>
+      {addonNames.length > 0 && <p class="mt-1 text-xs font-semibold text-brand-700">Add-ons: {addonNames.join(', ')}</p>}
+      {lead.notes && <p class="mt-1 rounded bg-stone-50 p-2 text-sm text-stone-600"><b>Notes:</b> {lead.notes}</p>}
+    </div>
+    <form method="POST" action={`/api/admin/bookings/${lead.id}`} class="flex gap-2">
+      {mode === 'pending' ? (
+        <>
+          <button type="submit" name="action" value="approve" class="rounded-full bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700">Approve</button>
+          <button type="submit" name="action" value="decline" class="rounded-full border border-red-300 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50">Decline</button>
+        </>
+      ) : (
+        <>
+          <input type="hidden" name="action" value="cancel" />
+          <button class="rounded-full border border-stone-300 px-4 py-2 text-sm font-bold text-stone-500 hover:bg-stone-50">Cancel</button>
+        </>
+      )}
+    </form>
+  </div>
+
+  <details class="mt-3 border-t border-stone-100 pt-3">
+    <summary class="cursor-pointer text-sm font-bold text-brand-700">Edit / move</summary>
+    <form method="POST" action={`/api/admin/bookings/${lead.id}`} class="mt-3 grid gap-3 sm:grid-cols-2">
+      <input type="hidden" name="action" value="edit" />
+
+      <div>
+        <label class="text-xs font-bold text-stone-600">Customer</label>
+        <input name="customer_name" value={lead.customerName} required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label class="text-xs font-bold text-stone-600">Phone</label>
+        <input name="customer_phone" value={lead.customerPhone} class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label class="text-xs font-bold text-stone-600">Email</label>
+        <input name="customer_email" type="email" value={lead.customerEmail} required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label class="text-xs font-bold text-stone-600">Date</label>
+        <input name="date" type="date" value={dateStr(lead.slotStart)} required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label class="text-xs font-bold text-stone-600">{bookings.length > 1 ? 'First dog starts' : 'Start time'}</label>
+        <input name="time" type="time" value={timeOfDay(lead.slotStart)} required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label class="text-xs font-bold text-stone-600">Suburb</label>
+        <input name="suburb" value={lead.suburb} class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      </div>
+      <div class="sm:col-span-2">
+        <label class="text-xs font-bold text-stone-600">Address</label>
+        <input name="address" value={lead.address} class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      </div>
+      <div class="sm:col-span-2 grid gap-2 sm:grid-cols-2">
+        {bookings.map((b) => (
+          <div class="flex gap-2">
+            <input type="hidden" name="dog_id" value={b.id} />
+            <input name="dog_name" value={b.dogName} required aria-label="Dog name" class="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+            <input name="dog_breed" value={b.dogBreed} placeholder="Breed" aria-label="Dog breed" class="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+          </div>
+        ))}
+      </div>
+      <div class="sm:col-span-2">
+        <label class="text-xs font-bold text-stone-600">Notes</label>
+        <textarea name="notes" rows="2" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm">{lead.notes}</textarea>
+      </div>
+      <div class="sm:col-span-2 flex flex-wrap items-center gap-3">
+        <button class="rounded-full bg-brand-600 px-5 py-2 text-sm font-bold text-white hover:bg-brand-700">Save changes</button>
+        <p class="text-xs text-stone-500">
+          {bookings.length > 1 ? 'Dogs are re-booked back-to-back from the new start time. ' : ''}
+          The customer gets an updated email.
+        </p>
+      </div>
+    </form>
+  </details>
+</div>

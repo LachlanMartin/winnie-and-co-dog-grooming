@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { isOnSaturday, overlaps, slotStartTimes } from './availability';
+import { isOnSaturday, overlaps, scheduleSlots, slotStartTimes } from './availability';
 
 // Run with: npx tsx src/lib/availability.check.ts
 let failed = 0;
@@ -35,6 +35,18 @@ check('exact match overlaps', overlaps(new Date('2026-08-22T01:00:00Z'), new Dat
 check('enclosing overlaps', overlaps(new Date('2026-08-22T00:30:00Z'), new Date('2026-08-22T04:00:00Z'), busy), true);
 check('adjacent (end == start) is free', overlaps(new Date('2026-08-22T03:00:00Z'), new Date('2026-08-22T04:00:00Z'), busy), false);
 check('before is free', overlaps(new Date('2026-08-22T00:00:00Z'), new Date('2026-08-22T01:00:00Z'), busy), false);
+
+// Multiple dogs share one start and run back-to-back.
+const group = scheduleSlots(new Date('2026-08-22T00:00:00Z'), [60, 90, 30]);
+check(
+  'group dogs run back-to-back',
+  group.map((s) => [s.start.toISOString().slice(11, 16), s.end.toISOString().slice(11, 16)]),
+  [
+    ['00:00', '01:00'],
+    ['01:00', '02:30'],
+    ['02:30', '03:00'],
+  ],
+);
 
 // Slot starts on a 2h weekday window (18:30–20:30 AEST = 08:30–10:30 UTC).
 check('1h session fits: 3 starts', starts(['08:30', '10:30'], 60), ['08:30', '09:00', '09:30']);

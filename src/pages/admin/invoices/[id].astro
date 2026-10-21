@@ -1,5 +1,5 @@
 ---
-import { and, asc, eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { db } from '../../../lib/db';
 import { bookings, invoiceItems, invoices, services } from '../../../../db/schema';
 import { money } from '../../../lib/money';
@@ -13,6 +13,9 @@ const service = booking ? (await db.select().from(services).where(eq(services.id
 
 if (!inv) {
   return Astro.redirect('/admin');
+}
+if (!booking) {
+  return Astro.redirect('/admin?tab=invoices');
 }
 const total = items.reduce((s, i) => s + i.unitPriceCents * i.quantity, 0);
 const dueDate = inv.dueDate ? new Date(`${inv.dueDate}T00:00:00`) : null;
@@ -58,8 +61,8 @@ const dueDateInput = dueDate ? dueDate.toISOString().slice(0, 10) : '';
 
         <form method="POST" action={`/api/admin/invoices/${inv.id}`} class="mt-5">
           <div class="space-y-2">
-            {items.map((i, idx) => (
-              <div key={i.id} class="flex items-center gap-2">
+            {items.map((i) => (
+              <div class="flex items-center gap-2">
                 <input type="hidden" name="item_id" value={i.id} />
                 <input name="desc" value={i.description} placeholder="Description" class="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm" />
                 <input name="qty" value={i.quantity} type="number" min="1" class="w-16 rounded-lg border border-stone-300 px-2 py-2 text-sm" />
@@ -70,7 +73,7 @@ const dueDateInput = dueDate ? dueDate.toISOString().slice(0, 10) : '';
           </div>
 
           <div class="mt-4 flex items-center gap-3">
-            <button formAction={`/api/admin/invoices/${inv.id}`} name="action" value="add" class="rounded-full border border-stone-300 px-4 py-1.5 text-sm font-bold text-stone-600 hover:bg-stone-50">+ Add line</button>
+            <button formaction={`/api/admin/invoices/${inv.id}`} name="action" value="add" class="rounded-full border border-stone-300 px-4 py-1.5 text-sm font-bold text-stone-600 hover:bg-stone-50">+ Add line</button>
           </div>
 
           <div class="mt-6 grid gap-4 sm:grid-cols-2">

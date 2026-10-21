@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 import { money } from './money';
-import { dayLabel, slotLabel } from './tz';
+import { slotLabel } from './tz';
 import type { Booking, Invoice, InvoiceItem, Service } from '../../db/schema';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -34,35 +34,46 @@ const shell = (body: string) => `
 
 export type BookingView = Booking & { service: Service };
 
-function bookingLines(b: BookingView): string {
+function bookingLines(bs: BookingView[]): string {
+  const b = bs[0];
+  const dogs = bs
+    .map(
+      (v) =>
+        `<b>${v.dogName}</b>${v.dogBreed ? ` (${v.dogBreed})` : ''} — ${v.service.name}${v.size ? ` (${v.size})` : ''} · ${slotLabel(v.slotStart)}`,
+    )
+    .join('<br>');
   return [
-    `<b>Service:</b> ${b.service.name}${b.size ? ` (${b.size})` : ''}`,
-    `<b>When:</b> ${dayLabel(b.slotStart)} at ${slotLabel(b.slotStart).split(',')[1]?.trim() ?? ''}`,
-    `<b>Dog:</b> ${b.dogName}${b.dogBreed ? ` (${b.dogBreed})` : ''}`,
+    `<b>${bs.length > 1 ? 'Dogs' : 'Dog'}:</b><br>${dogs}`,
     `<b>Address:</b> ${b.address}${b.suburb ? `, ${b.suburb}` : ''}`,
   ].join('<br>');
 }
 
-export async function emailRequestReceived(b: BookingView) {
+function dogNames(bs: BookingView[]): string {
+  return bs.map((b) => b.dogName).join(' & ');
+}
+
+export async function emailRequestReceived(bs: BookingView[]) {
+  const b = bs[0];
   await send(
     b.customerEmail,
     'Booking request received — Winnie & Co Dog Grooming',
     shell(
       `<p>Hi ${b.customerName},</p>
        <p>Thanks for booking with Winnie &amp; Co! Your request has been received and is awaiting confirmation.</p>
-       <p>${bookingLines(b)}</p>
+       <p>${bookingLines(bs)}</p>
        <p>You'll receive a confirmation email once your appointment is approved. If you need to change or cancel, just reply to this email or call 0408 700 265.</p>`,
     ),
   );
 }
 
-export async function emailRequestToOwner(b: BookingView) {
+export async function emailRequestToOwner(bs: BookingView[]) {
+  const b = bs[0];
   await send(
     OWNER,
-    `New booking request: ${b.dogName} — ${b.service.name}`,
+    `New booking request: ${dogNames(bs)} — ${b.service.name}`,
     shell(
       `<p><b>New booking request awaiting approval:</b></p>
-       <p>${bookingLines(b)}</p>
+       <p>${bookingLines(bs)}</p>
        <p><b>Customer:</b> ${b.customerName} · ${b.customerEmail} · ${b.customerPhone}</p>
        ${b.notes ? `<p><b>Notes:</b> ${b.notes}</p>` : ''}
        <p><a href="${SITE}/admin">Open admin to approve or decline</a></p>`,
@@ -70,27 +81,43 @@ export async function emailRequestToOwner(b: BookingView) {
   );
 }
 
-export async function emailBookingConfirmed(b: BookingView) {
+export async function emailBookingConfirmed(bs: BookingView[]) {
+  const b = bs[0];
   await send(
     b.customerEmail,
     'Booking confirmed — Winnie & Co Dog Grooming',
     shell(
       `<p>Hi ${b.customerName},</p>
        <p>Great news — your appointment is <b>confirmed</b>!</p>
-       <p>${bookingLines(b)}</p>
+       <p>${bookingLines(bs)}</p>
        <p>See you then! 🐾</p>`,
     ),
   );
 }
 
-export async function emailBookingDeclined(b: BookingView) {
+export async function emailBookingChanged(bs: BookingView[]) {
+  const b = bs[0];
+  await send(
+    b.customerEmail,
+    'Appointment updated — Winnie & Co Dog Grooming',
+    shell(
+      `<p>Hi ${b.customerName},</p>
+       <p>Your appointment has been updated:</p>
+       <p>${bookingLines(bs)}</p>
+       <p>If these details aren't right, just reply to this email or call 0408 700 265.</p>`,
+    ),
+  );
+}
+
+export async function emailBookingDeclined(bs: BookingView[]) {
+  const b = bs[0];
   await send(
     b.customerEmail,
     `Booking declined — Winnie & Co Dog Grooming`,
     shell(
       `<p>Hi ${b.customerName},</p>
        <p>Unfortunately we're unable to accommodate your requested appointment:</p>
-       <p>${bookingLines(b)}</p>
+       <p>${bookingLines(bs)}</p>
        <p>Please get in touch on 0408 700 265 or at alisha@winnieandcodoggrooming.com.au to arrange an alternative time.</p>`,
     ),
   );

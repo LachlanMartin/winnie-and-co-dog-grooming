@@ -12,8 +12,9 @@ Booking + invoicing website for Winnie & Co, a mobile dog grooming business in B
 
 ## Features
 
-- **Booking wizard** — service → size → day → free slot → dog/contact details. Slots respect working hours, the biweekly Saturday rule, blockouts, and existing bookings.
-- **Owner approval** — bookings land `pending`; the owner approves/declines from `/admin`. Approved bookings get a confirmation email.
+- **Booking wizard** — one dog or several in the same request; each dog gets its own service and size. Slots respect working hours, the biweekly Saturday rule, blockouts, and existing bookings. Multiple dogs are reserved back-to-back.
+- **Owner approval** — bookings land `pending`; the owner approves/declines the whole order from `/admin`. Approved bookings get a confirmation email.
+- **Admin bookings** — create a confirmed booking from `/admin`, or edit/move an existing request. Moving a family re-books every dog back-to-back and emails the customer.
 - **Invoices** — auto-generated as a draft from each booking (service price + add-ons + travel line), editable line-by-line in `/admin/invoices/[id]`, sent to the customer as a link to a printable page. Statuses: draft → sent → paid.
 - **Availability admin** — weekly hours, biweekly Saturday anchor, and one-off day/time blocks.
 - **Email** — request-received, new-booking alert, confirmed, declined, invoice-sent.
@@ -83,6 +84,6 @@ npx tsx src/lib/availability.check.ts   # availability engine self-check
 
 ## Data model
 
-`services` (with per-size prices + durations) · `addons` · `working_hours` · `blockouts` · `bookings` · `invoices` · `invoice_items` · `settings`.
+`services` (with per-size prices + durations) · `addons` · `working_hours` · `blockouts` · `bookings` (dogs booked together share `order_id`) · `invoices` · `invoice_items` · `settings`.
 
 Double-booking is prevented by a partial unique index on live bookings' `slot_start` plus a server-side overlap re-check (`ponytail:` — a cross-overlap race window is possible under exact simultaneity; upgrade path is a serializable transaction or a GiST exclusion constraint).

@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   date,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -62,6 +63,8 @@ export const bookings = pgTable(
   'bookings',
   {
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    // Dogs booked together in one request share this id.
+    orderId: text('order_id'),
     serviceId: integer('service_id')
       .notNull()
       .references(() => services.id),
@@ -87,6 +90,7 @@ export const bookings = pgTable(
     uniqueIndex('bookings_slot_live_idx')
       .on(t.slotStart)
       .where(sql`${t.status} in ('pending','confirmed')`),
+    index('bookings_order_idx').on(t.orderId),
   ],
 );
 

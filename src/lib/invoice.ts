@@ -3,7 +3,8 @@ import { and, eq } from 'drizzle-orm';
 import { db } from './db';
 import { addons, bookings, invoiceItems, invoices, services, settings } from '../../db/schema';
 import type { Booking, Service } from '../../db/schema';
-import { priceFor } from './availability';
+import { priceFor, SIZES } from './availability';
+import type { Size } from './availability';
 import { getSetting } from './settings';
 
 async function nextInvoiceNumber(): Promise<string> {
@@ -19,14 +20,15 @@ async function nextInvoiceNumber(): Promise<string> {
 
 export async function createDraftInvoice(booking: Booking, service: Service): Promise<void> {
   const number = await nextInvoiceNumber();
-  const basePrice = priceFor(service, booking.size);
+  const size = SIZES.includes(booking.size as Size) ? (booking.size as Size) : null;
+  const basePrice = priceFor(service, size);
   const addonRows = booking.addonIds.length
     ? await db.select().from(addons).where(and(eq(addons.active, true)))
     : [];
   const selected = addonRows.filter((a) => booking.addonIds.includes(a.id));
 
   const items = [
-    { description: `${service.name}${booking.size ? ` — ${booking.size}` : ''}`, quantity: 1, unitPriceCents: basePrice },
+    { description: `${service.name}${size ? ` — ${size}` : ''}`, quantity: 1, unitPriceCents: basePrice },
     ...selected.map((a) => ({ description: a.name, quantity: 1, unitPriceCents: a.priceCents })),
     { description: 'Travel (within 10km of Berwick included)', quantity: 1, unitPriceCents: 0 },
   ];

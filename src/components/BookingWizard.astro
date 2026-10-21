@@ -13,50 +13,65 @@ interface Props {
 }
 const { services, addons, preselect, sizeLabels } = Astro.props;
 const sizes = ['small', 'medium', 'large', 'xl'] as const;
+const priced = services.map((s) => ({
+  id: s.id,
+  name: s.name,
+  hasSizes: s.hasSizes,
+  price: s.hasSizes
+    ? 'from ' + money(Math.min(...[s.priceS, s.priceM, s.priceL, s.priceXl].filter((n): n is number => n != null)))
+    : money(s.priceFlat ?? 0),
+}));
 const btn = 'mt-4 rounded-full bg-brand-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed';
 const backBtn = 'mt-4 rounded-full border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-600 transition hover:bg-stone-50';
 ---
 
 <div id="wizard" class="mt-8 space-y-6">
-  <fieldset id="step-service" class="pt-6">
-    <legend class="px-1 text-lg font-extrabold text-stone-900">1. Choose a service</legend>
-    <div class="mt-3 grid gap-3">
-      {services.map((s) => (
-        <label data-service-card class="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-stone-200 p-4 transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
-          <input type="radio" name="service" value={s.id} data-service={s.slug} class="mt-1 accent-brand-600" />
-          <span class="flex-1">
-            <span class="flex items-center justify-between gap-2">
-              <span class="font-extrabold text-stone-800">{s.name}</span>
-              <span class="text-sm font-bold text-brand-700">
-                {s.hasSizes ? 'From ' + money(Math.min(...[s.priceS, s.priceM, s.priceL, s.priceXl].filter((n): n is number => n != null))) : money(s.priceFlat ?? 0)}
-              </span>
-            </span>
-            <span class="mt-1 block text-sm text-stone-500">{s.description}</span>
-          </span>
-        </label>
-      ))}
-    </div>
-    <button type="button" id="next-service" disabled class={btn}>Next</button>
-  </fieldset>
+  <fieldset id="step-dogs" class="pt-6">
+    <legend class="px-1 text-lg font-extrabold text-stone-900">1. Your dog(s)</legend>
+    <p class="mt-1 text-sm text-stone-500">Booking more than one dog? Add each dog here — we'll reserve enough time for all of them, one after another.</p>
+    <div id="dog-rows" class="mt-3 space-y-4"></div>
 
-  <fieldset id="step-size" class="hidden pt-6">
-    <legend class="px-1 text-lg font-extrabold text-stone-900">2. Choose your dog's size</legend>
-    <div class="mt-3 grid gap-3 sm:grid-cols-2">
-      {sizes.map((z) => (
-        <label class="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-stone-200 p-4 transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
-          <input type="radio" name="size" value={z} class="accent-brand-600" />
-          <span class="font-bold text-stone-800">{sizeLabels[z]}</span>
-        </label>
-      ))}
-    </div>
-    <div class="flex gap-3">
-      <button type="button" id="back-to-service" class={backBtn}>&larr; Back</button>
-      <button type="button" id="next-size" disabled class={btn}>Next</button>
+    <template id="dog-row-template">
+      <div data-dog-row class="rounded-xl border-2 border-stone-200 bg-white p-4">
+        <div class="flex items-center justify-between gap-3">
+          <p data-dog-title class="font-extrabold text-stone-800">Dog 1</p>
+          <button type="button" data-remove-dog class="text-sm font-bold text-red-500 hover:text-red-700">Remove</button>
+        </div>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label class="text-sm font-bold text-stone-700">Dog's name *</label>
+            <input name="dog_name" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+          </div>
+          <div>
+            <label class="text-sm font-bold text-stone-700">Breed</label>
+            <input name="dog_breed" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
+          </div>
+          <div>
+            <label class="text-sm font-bold text-stone-700">Service *</label>
+            <select name="service" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2">
+              <option value="">Choose a service…</option>
+              {priced.map((s) => <option value={s.id}>{s.name} — {s.price}</option>)}
+            </select>
+          </div>
+          <div>
+            <label class="text-sm font-bold text-stone-700">Size *</label>
+            <select name="size" class="mt-1 hidden w-full rounded-lg border border-stone-300 px-3 py-2">
+              <option value="">Choose a size…</option>
+              {sizes.map((z) => <option value={z}>{sizeLabels[z]}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <button type="button" id="add-dog" class="mt-3 rounded-full border border-stone-300 px-5 py-2 text-sm font-bold text-stone-600 transition hover:bg-stone-50">+ Add another dog</button>
+    <div>
+      <button type="button" id="next-dogs" disabled class={btn}>Next</button>
     </div>
   </fieldset>
 
   <fieldset id="step-date" class="hidden pt-6">
-    <legend class="px-1 text-lg font-extrabold text-stone-900">3. Choose a day</legend>
+    <legend class="px-1 text-lg font-extrabold text-stone-900">2. Choose a day</legend>
     <div class="mt-3 flex items-center justify-between">
       <button type="button" id="cal-prev" class="rounded-full border border-stone-300 px-3 py-1.5 text-stone-600 transition hover:bg-stone-50" aria-label="Previous month">&lsaquo;</button>
       <span id="cal-month" class="font-bold text-stone-800"></span>
@@ -68,13 +83,13 @@ const backBtn = 'mt-4 rounded-full border border-stone-300 px-5 py-2.5 text-sm f
     <div id="cal-grid" class="mt-1 grid grid-cols-7 gap-1"></div>
     <p id="cal-hint" class="mt-2 hidden text-sm text-stone-500">No openings in this month — try another month.</p>
     <div class="flex gap-3">
-      <button type="button" id="back-to-size" class={backBtn}>&larr; Back</button>
+      <button type="button" id="back-to-dogs" class={backBtn}>&larr; Back</button>
       <button type="button" id="next-date" disabled class={btn}>Next</button>
     </div>
   </fieldset>
 
   <fieldset id="step-slot" class="hidden pt-6">
-    <legend class="px-1 text-lg font-extrabold text-stone-900">4. Choose a time</legend>
+    <legend class="px-1 text-lg font-extrabold text-stone-900">3. Choose a time</legend>
     <div id="slot-grid" class="mt-3 flex flex-wrap gap-2"></div>
     <p id="slot-empty" class="mt-3 hidden text-sm text-stone-500">No times available on this day — go back and try another day.</p>
     <div class="flex gap-3">
@@ -84,23 +99,17 @@ const backBtn = 'mt-4 rounded-full border border-stone-300 px-5 py-2.5 text-sm f
   </fieldset>
 
   <fieldset id="step-details" class="hidden pt-6">
-    <legend class="px-1 text-lg font-extrabold text-stone-900">5. Your details</legend>
+    <legend class="px-1 text-lg font-extrabold text-stone-900">4. Your details</legend>
+    <div class="mt-3 rounded-xl bg-brand-50 p-4 text-sm text-brand-900">
+      <p class="font-bold">Your booking</p>
+      <p id="selected-dogs" class="mt-1"></p>
+    </div>
     <form id="booking-form" class="mt-3 grid gap-4 sm:grid-cols-2">
-      <input type="hidden" name="service" id="f-service" />
-      <input type="hidden" name="size" id="f-size" />
       <input type="hidden" name="start" id="f-start" />
-
-      <div>
-        <label class="text-sm font-bold text-stone-700" for="dog_name">Dog's name *</label>
-        <input id="dog_name" name="dog_name" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
-      </div>
-      <div>
-        <label class="text-sm font-bold text-stone-700" for="dog_breed">Breed</label>
-        <input id="dog_breed" name="dog_breed" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2" />
-      </div>
+      <input type="hidden" name="dogs" id="f-dogs" />
 
       <div class="sm:col-span-2">
-        <p class="text-sm font-bold text-stone-700">Add-ons</p>
+        <p class="text-sm font-bold text-stone-700">Add-ons <span class="font-normal text-stone-500">(applied to each dog)</span></p>
         <div class="mt-2 grid gap-2 sm:grid-cols-2">
           {addons.map((a) => (
             <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-stone-200 px-3 py-2 text-sm">
@@ -159,14 +168,16 @@ const backBtn = 'mt-4 rounded-full border border-stone-300 px-5 py-2.5 text-sm f
   </fieldset>
 </div>
 
-<script define:vars={{ services, preselect }}>
+<script is:inline define:vars={{ services, preselect }}>
 const $ = (sel) => document.querySelector(sel);
-const state = { service: null, serviceHasSizes: false, size: null, date: null, start: null };
+const $$ = (sel) => [...document.querySelectorAll(sel)];
+const state = { date: null, start: null };
 
-const steps = { service: $('#step-service'), size: $('#step-size'), date: $('#step-date'), slot: $('#step-slot'), details: $('#step-details') };
+const steps = { dogs: $('#step-dogs'), date: $('#step-date'), slot: $('#step-slot'), details: $('#step-details') };
+const rowsEl = $('#dog-rows'), tpl = $('#dog-row-template');
 const slotGrid = $('#slot-grid'), slotEmpty = $('#slot-empty'), formError = $('#form-error');
 const calGrid = $('#cal-grid'), calMonthLabel = $('#cal-month'), calHint = $('#cal-hint');
-const nextService = $('#next-service'), nextSize = $('#next-size'), nextDate = $('#next-date'), nextSlot = $('#next-slot');
+const nextDogs = $('#next-dogs'), nextDate = $('#next-date'), nextSlot = $('#next-slot');
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 let calYear, calMonth;
@@ -184,9 +195,96 @@ function showStep(name) {
   steps[name].scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+function dogRows() { return $$('[data-dog-row]'); }
+function rowService(row) {
+  const value = Number(row.querySelector('[name="service"]').value);
+  return services.find((s) => s.id === value) || null;
+}
+
+function clearAppointment() {
+  state.date = null;
+  state.start = null;
+  $('#f-start').value = '';
+  nextDate.disabled = true;
+}
+
+function syncRow(row) {
+  const svc = rowService(row);
+  const size = row.querySelector('[name="size"]');
+  size.classList.toggle('hidden', !svc || !svc.hasSizes);
+  if (!svc || !svc.hasSizes) size.value = '';
+}
+
+function rowsAreValid() {
+  return dogRows().every((row) => {
+    const name = row.querySelector('[name="dog_name"]').value.trim();
+    const svc = rowService(row);
+    if (!name || !svc) return false;
+    if (svc.hasSizes && !row.querySelector('[name="size"]').value) return false;
+    return true;
+  });
+}
+
+function refreshRows() {
+  const rows = dogRows();
+  rows.forEach((row, i) => {
+    row.querySelector('[data-dog-title]').textContent = 'Dog ' + (i + 1);
+    row.querySelector('[data-remove-dog]').classList.toggle('hidden', rows.length === 1);
+  });
+  nextDogs.disabled = !rowsAreValid();
+}
+
+function dogData() {
+  return dogRows().map((row) => {
+    const svc = rowService(row);
+    return {
+      name: row.querySelector('[name="dog_name"]').value.trim(),
+      breed: row.querySelector('[name="dog_breed"]').value.trim(),
+      service: svc ? svc.id : 0,
+      size: row.querySelector('[name="size"]').value || null,
+    };
+  });
+}
+
+function dogQuery() {
+  const query = new URLSearchParams();
+  dogData().forEach((dog) => {
+    query.append('service', String(dog.service));
+    query.append('size', dog.size || '');
+  });
+  return query;
+}
+
+function bindRow(row) {
+  row.querySelector('[name="service"]').addEventListener('change', () => {
+    syncRow(row);
+    clearAppointment();
+    refreshRows();
+  });
+  row.querySelector('[name="dog_name"]').addEventListener('input', refreshRows);
+  row.querySelector('[name="size"]').addEventListener('change', () => {
+    clearAppointment();
+    refreshRows();
+  });
+  row.querySelector('[data-remove-dog]').addEventListener('click', () => {
+    row.remove();
+    clearAppointment();
+    refreshRows();
+  });
+}
+
+function addRow() {
+  const fragment = tpl.content.cloneNode(true);
+  const row = fragment.querySelector('[data-dog-row]');
+  rowsEl.appendChild(fragment);
+  bindRow(row);
+  refreshRows();
+  return row;
+}
+
 async function loadSlots() {
-  const query = new URLSearchParams({ service: String(state.service), date: state.date });
-  if (state.serviceHasSizes && state.size) query.set('size', state.size);
+  const query = dogQuery();
+  query.set('date', state.date);
   slotGrid.innerHTML = '';
   slotEmpty.classList.add('hidden');
   nextSlot.disabled = true;
@@ -211,8 +309,8 @@ async function loadSlots() {
 }
 
 async function loadCalendar() {
-  const query = new URLSearchParams({ service: String(state.service), month: calYear + '-' + String(calMonth + 1).padStart(2, '0') });
-  if (state.serviceHasSizes && state.size) query.set('size', state.size);
+  const query = dogQuery();
+  query.set('month', calYear + '-' + String(calMonth + 1).padStart(2, '0'));
   calDays.clear();
   const res = await fetch('/api/availability?' + query.toString());
   const data = await res.json();
@@ -243,6 +341,7 @@ function renderCalendar() {
       btn.addEventListener('click', () => {
         state.date = ds;
         state.start = null;
+        $('#f-start').value = '';
         calGrid.querySelectorAll('button[data-date]').forEach((b) => b.removeAttribute('aria-checked'));
         btn.setAttribute('aria-checked', 'true');
         nextDate.disabled = false;
@@ -259,38 +358,23 @@ function enterDateStep() {
   loadCalendar();
 }
 
-function advanceFromService() {
-  if (state.serviceHasSizes) showStep('size');
-  else enterDateStep();
+function renderSummary() {
+  const parts = dogData().map((dog) => {
+    const svc = services.find((s) => s.id === dog.service);
+    const size = dog.size ? ` (${dog.size})` : '';
+    return `${dog.name} — ${svc ? svc.name : ''}${size}`;
+  });
+  $('#selected-dogs').textContent = parts.join(' · ');
 }
 
-document.querySelectorAll('[data-service-card] input[name="service"]').forEach((input) => {
-  input.addEventListener('change', () => {
-    const svc = services.find((s) => s.slug === input.getAttribute('data-service'));
-    if (!svc) return;
-    state.service = svc.id;
-    state.serviceHasSizes = svc.hasSizes;
-    state.size = null;
-    state.date = null;
-    state.start = null;
-    $('#f-service').value = String(svc.id);
-    resetMonth();
-    nextService.disabled = false;
-  });
+$('#add-dog').addEventListener('click', () => {
+  addRow();
+  clearAppointment();
 });
-nextService.addEventListener('click', advanceFromService);
 
-document.querySelectorAll('input[name="size"]').forEach((input) => {
-  input.addEventListener('change', () => {
-    state.size = input.value;
-    state.date = null;
-    state.start = null;
-    $('#f-size').value = input.value;
-    nextSize.disabled = false;
-  });
-});
-nextSize.addEventListener('click', () => {
+nextDogs.addEventListener('click', () => {
   resetMonth();
+  clearAppointment();
   enterDateStep();
 });
 
@@ -307,10 +391,13 @@ $('#cal-next').addEventListener('click', () => {
 
 nextDate.addEventListener('click', async () => { await loadSlots(); showStep('slot'); });
 
-nextSlot.addEventListener('click', () => showStep('details'));
+nextSlot.addEventListener('click', () => {
+  $('#f-dogs').value = JSON.stringify(dogData());
+  renderSummary();
+  showStep('details');
+});
 
-$('#back-to-service').addEventListener('click', () => showStep('service'));
-$('#back-to-size').addEventListener('click', () => showStep('size'));
+$('#back-to-dogs').addEventListener('click', () => showStep('dogs'));
 $('#back-to-date').addEventListener('click', () => showStep('date'));
 $('#back-to-slot').addEventListener('click', () => showStep('slot'));
 
@@ -319,6 +406,7 @@ $('#booking-form').addEventListener('submit', async (e) => {
   if (!state.start) return;
   formError.classList.add('hidden');
   const form = e.target;
+  $('#f-dogs').value = JSON.stringify(dogData());
   const res = await fetch('/api/bookings', { method: 'POST', body: new FormData(form) });
   const data = await res.json();
   if (data.ok) {
@@ -329,10 +417,16 @@ $('#booking-form').addEventListener('submit', async (e) => {
   }
 });
 
+addRow();
 resetMonth();
-if (preselect) {
-  const input = document.querySelector('[data-service="' + preselect + '"]');
-  if (input) { input.click(); advanceFromService(); }
-}
 
+if (preselect) {
+  const svc = services.find((s) => s.slug === preselect);
+  if (svc) {
+    const first = dogRows()[0];
+    first.querySelector('[name="service"]').value = String(svc.id);
+    syncRow(first);
+    refreshRows();
+  }
+}
 </script>

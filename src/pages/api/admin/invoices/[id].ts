@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { eq } from 'drizzle-orm';
 import { db } from '../../../../lib/db';
-import { bookings, invoiceItems, invoices, services } from '../../../../../db/schema';
+import { invoiceItems, invoices } from '../../../../../db/schema';
 import { getSetting } from '../../../../lib/settings';
 import { recalcInvoiceTotals, loadInvoiceByToken } from '../../../../lib/invoice';
 import { dollarsToCents } from '../../../../lib/money';

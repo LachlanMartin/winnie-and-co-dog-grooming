@@ -1,0 +1,174 @@
+---
+import { money } from '../lib/money';
+import { dateStr } from '../lib/tz';
+
+interface Props {
+  services: {
+    id: number; name: string; hasSizes: boolean;
+    priceFlat: number | null; priceS: number | null; priceM: number | null;
+    priceL: number | null; priceXl: number | null;
+  }[];
+  addons: { id: number; name: string; priceCents: number }[];
+  sizeLabels: Record<string, string>;
+}
+const { services, addons, sizeLabels } = Astro.props;
+const sizes = ['small', 'medium', 'large', 'xl'] as const;
+const priced = services.map((s) => ({
+  id: s.id,
+  name: s.name,
+  hasSizes: s.hasSizes,
+  price: s.hasSizes
+    ? 'from ' + money(Math.min(...[s.priceS, s.priceM, s.priceL, s.priceXl].filter((n): n is number => n != null)))
+    : money(s.priceFlat ?? 0),
+}));
+const today = dateStr(new Date());
+---
+
+<details class="rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
+  <summary class="cursor-pointer font-extrabold text-brand-700">+ Create booking</summary>
+  <p class="mt-1 text-sm text-stone-500">For phone or message bookings. It's confirmed immediately and the customer gets a confirmation email.</p>
+
+  <form id="admin-booking-form" method="POST" action="/api/admin/bookings" class="mt-4 grid gap-3 sm:grid-cols-2">
+    <input type="hidden" name="dogs" />
+
+    <div>
+      <label class="text-xs font-bold text-stone-600">Customer</label>
+      <input name="customer_name" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+    </div>
+    <div>
+      <label class="text-xs font-bold text-stone-600">Phone</label>
+      <input name="customer_phone" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+    </div>
+    <div>
+      <label class="text-xs font-bold text-stone-600">Email</label>
+      <input name="customer_email" type="email" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+    </div>
+    <div>
+      <label class="text-xs font-bold text-stone-600">Suburb</label>
+      <input name="suburb" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+    </div>
+    <div class="sm:col-span-2">
+      <label class="text-xs font-bold text-stone-600">Address</label>
+      <input name="address" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+    </div>
+
+    <div class="sm:col-span-2">
+      <p class="text-sm font-bold text-stone-700">Dogs</p>
+      <div id="admin-dog-rows" class="mt-2 space-y-2"></div>
+      <template id="admin-dog-template">
+        <div data-admin-dog class="flex flex-wrap items-center gap-2 rounded-lg bg-stone-50 p-2">
+          <input name="dog_name" placeholder="Dog name" required aria-label="Dog name" class="min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+          <input name="dog_breed" placeholder="Breed" aria-label="Breed" class="min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+          <select name="service" required aria-label="Service" class="rounded-lg border border-stone-300 px-2 py-2 text-sm">
+            <option value="">Service…</option>
+            {priced.map((s) => <option value={s.id} data-sizes={s.hasSizes ? '1' : ''}>{s.name} — {s.price}</option>)}
+          </select>
+          <select name="size" aria-label="Size" class="hidden rounded-lg border border-stone-300 px-2 py-2 text-sm">
+            <option value="">Size…</option>
+            {sizes.map((z) => <option value={z}>{sizeLabels[z]}</option>)}
+          </select>
+          <button type="button" data-remove-dog class="text-sm font-bold text-red-500 hover:text-red-700">Remove</button>
+        </div>
+      </template>
+      <button type="button" id="admin-add-dog" class="mt-2 rounded-full border border-stone-300 px-4 py-1.5 text-sm font-bold text-stone-600 hover:bg-stone-50">+ Add another dog</button>
+    </div>
+
+    <div>
+      <label class="text-xs font-bold text-stone-600">Date</label>
+      <input name="date" type="date" min={today} required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+    </div>
+    <div>
+      <label class="text-xs font-bold text-stone-600">First dog starts</label>
+      <input name="time" type="time" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+    </div>
+
+    <div class="sm:col-span-2">
+      <p class="text-xs font-bold text-stone-600">Add-ons (applied to each dog)</p>
+      <div class="mt-1 flex flex-wrap gap-3">
+        {addons.map((a) => (
+          <label class="flex items-center gap-2 text-sm text-stone-600">
+            <input type="checkbox" name="addon" value={a.id} class="accent-brand-600" />
+            {a.name} <span class="font-bold text-brand-700">{money(a.priceCents)}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+
+    <div class="sm:col-span-2">
+      <label class="text-xs font-bold text-stone-600">Notes</label>
+      <input name="notes" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+    </div>
+
+    <div class="sm:col-span-2">
+      <button class="rounded-full bg-brand-600 px-5 py-2 text-sm font-bold text-white hover:bg-brand-700">Create confirmed booking</button>
+    </div>
+  </form>
+</details>
+
+<script>
+const rows = document.getElementById('admin-dog-rows') as HTMLElement;
+const template = document.getElementById('admin-dog-template') as HTMLTemplateElement;
+
+function dogRows(): HTMLElement[] {
+  return [...document.querySelectorAll<HTMLElement>('[data-admin-dog]')];
+}
+function serviceHasSizes(row: HTMLElement): boolean {
+  const select = row.querySelector<HTMLSelectElement>('[name="service"]');
+  const option = select?.selectedOptions[0];
+  return option?.dataset.sizes === '1';
+}
+function syncRow(row: HTMLElement) {
+  const size = row.querySelector<HTMLSelectElement>('[name="size"]');
+  if (!size) return;
+  const hasSizes = serviceHasSizes(row);
+  size.classList.toggle('hidden', !hasSizes);
+  if (!hasSizes) size.value = '';
+}
+function refresh() {
+  const all = dogRows();
+  all.forEach((row) => {
+    row.querySelector('[data-remove-dog]')?.classList.toggle('hidden', all.length === 1);
+  });
+}
+function addRow() {
+  const fragment = template.content.cloneNode(true) as DocumentFragment;
+  const row = fragment.querySelector<HTMLElement>('[data-admin-dog]');
+  if (!row) return;
+  rows.appendChild(fragment);
+  row.querySelector('[name="service"]')?.addEventListener('change', () => syncRow(row));
+  row.querySelector('[data-remove-dog]')?.addEventListener('click', () => {
+    row.remove();
+    refresh();
+  });
+  refresh();
+  return row;
+}
+
+document.getElementById('admin-add-dog')?.addEventListener('click', () => addRow());
+
+document.getElementById('admin-booking-form')?.addEventListener('submit', (event) => {
+  const found = dogRows();
+  const dogs = found.map((row) => {
+    const name = row.querySelector<HTMLInputElement>('[name="dog_name"]');
+    const breed = row.querySelector<HTMLInputElement>('[name="dog_breed"]');
+    const service = row.querySelector<HTMLSelectElement>('[name="service"]');
+    const size = row.querySelector<HTMLSelectElement>('[name="size"]');
+    return {
+      name: name?.value.trim() ?? '',
+      breed: breed?.value.trim() ?? '',
+      service: Number(service?.value ?? 0),
+      size: size?.value || null,
+    };
+  });
+  const invalid = dogs.some((dog, i) => !dog.name || !dog.service || (serviceHasSizes(found[i]) && !dog.size));
+  if (!dogs.length || invalid) {
+    event.preventDefault();
+    alert('Please enter a name and choose a service and size for each dog.');
+    return;
+  }
+  const hidden = document.querySelector<HTMLInputElement>('#admin-booking-form [name="dogs"]');
+  if (hidden) hidden.value = JSON.stringify(dogs);
+});
+
+addRow();
+</script>

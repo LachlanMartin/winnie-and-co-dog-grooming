@@ -1,7 +1,7 @@
 import { and, eq, gt, inArray, lt } from 'drizzle-orm';
 import { differenceInCalendarDays } from 'date-fns';
 import { db } from './db';
-import { blockouts, bookings, workingHours } from '../../db/schema';
+import { blockouts, bookings, services, workingHours } from '../../db/schema';
 import type { Service } from '../../db/schema';
 import { getSetting } from './settings';
 import { SLOT_GRID_MINUTES, dateStr, isoDayOfWeek, parseDateOnly, zonedDateTime } from './tz';
@@ -33,6 +33,39 @@ export function durationFor(service: Service, size: Size | null): number {
   return service[`duration${SIZE_SUFFIX[size]}`] ?? 60;
 }
 
+export type DogSelection = { service: Service; size: Size | null };
+
+/** Back-to-back time blocks for each dog, starting at `start`. */
+export function scheduleSlots(start: Date, durations: number[]): { start: Date; end: Date }[] {
+  let cursor = start.getTime();
+  return durations.map((minutes) => {
+    const slot = { start: new Date(cursor), end: new Date(cursor + minutes * 60000) };
+    cursor = slot.end.getTime();
+    return slot;
+  });
+}
+
+export function totalDuration(dogs: DogSelection[]): number {
+  return dogs.reduce((sum, d) => sum + durationFor(d.service, d.size), 0);
+}
+
+/** Resolve repeated service/size query values into validated dog selections. */
+export async function loadDogSelections(ids: number[], sizes: (string | null)[]): Promise<DogSelection[] | null> {
+  if (!ids.length || ids.some((id) => !Number.isInteger(id) || id <= 0)) return null;
+  const rows = await db.select().from(services).where(inArray(services.id, ids));
+  const byId = new Map(rows.map((s) => [s.id, s]));
+  const dogs: DogSelection[] = [];
+  for (let i = 0; i < ids.length; i++) {
+    const service = byId.get(ids[i]);
+    if (!service || !service.active) return null;
+    const raw = sizes[i] ?? null;
+    const size = service.hasSizes ? (SIZES.includes(raw as Size) ? (raw as Size) : null) : null;
+    if (service.hasSizes && !size) return null;
+    dogs.push({ service, size });
+  }
+  return dogs;
+}
+
 /** True when the business-tz date is an "on" Saturday under the biweekly rule. */
 export function isOnSaturday(s: string, anchor: string): boolean {
   return differenceInCalendarDays(parseDateOnly(s), parseDateOnly(anchor)) % 14 === 0;
@@ -54,14 +87,14 @@ export async function getWorkingWindow(s: string): Promise<{ start: Date; end: D
   return { start: zonedDateTime(s, rows[0].openTime), end: zonedDateTime(s, rows[0].closeTime) };
 }
 
-async function busyRanges(from: Date, to: Date): Promise<[Date, Date][]> {
+async function busyRanges(from: Date, to: Date, excludeIds = new Set<number>()): Promise<[Date, Date][]> {
   const [blocks, live] = await Promise.all([
     db
       .select({ s: blockouts.startAt, e: blockouts.endAt })
       .from(blockouts)
       .where(and(lt(blockouts.startAt, to), gt(blockouts.endAt, from))),
     db
-      .select({ s: bookings.slotStart, e: bookings.slotEnd })
+      .select({ id: bookings.id, s: bookings.slotStart, e: bookings.slotEnd })
       .from(bookings)
       .where(
         and(
@@ -71,7 +104,10 @@ async function busyRanges(from: Date, to: Date): Promise<[Date, Date][]> {
         ),
       ),
   ]);
-  return [...blocks.map((b) => [b.s, b.e]), ...live.map((b) => [b.s, b.e])];
+  return [
+    ...blocks.map((b): [Date, Date] => [b.s, b.e]),
+    ...live.filter((b) => !excludeIds.has(b.id)).map((b): [Date, Date] => [b.s, b.e]),
+  ];
 }
 
 export function overlaps(s: Date, e: Date, busy: [Date, Date][]): boolean {
@@ -120,13 +156,17 @@ export async function getFreeSlots(s: string, durationMinutes: number): Promise<
 }
 
 /** Booking-time trust check: does this exact range fit an open window with no conflicts? */
-export async function isSlotFree(start: Date, end: Date): Promise<boolean> {
+export async function isSlotFree(
+  start: Date,
+  end: Date,
+  excludeIds = new Set<number>(),
+): Promise<boolean> {
   const window = await getWorkingWindow(dateStr(start));
   if (!window) return false;
   const allowed = slotStartTimes(window, (end.getTime() - start.getTime()) / 60000, null).some(
     (s) => s.getTime() === start.getTime(),
   );
   if (!allowed) return false;
-  const busy = await busyRanges(start, end);
+  const busy = await busyRanges(start, end, excludeIds);
   return !overlaps(start, end, busy);
 }
