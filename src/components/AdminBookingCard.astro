@@ -14,7 +14,7 @@ const addonNames = [...new Set(bookings.flatMap((b) => b.addonNames))];
 const dogNames = bookings.map((b) => b.dogName).join(' & ');
 ---
 
-<div class="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+<div class="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-sm">
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div class="min-w-0">
       <p class="font-extrabold">
@@ -34,20 +34,22 @@ const dogNames = bookings.map((b) => b.dogName).join(' & ');
     <form method="POST" action={`/api/admin/bookings/${lead.id}`} class="flex gap-2">
       {mode === 'pending' ? (
         <>
-          <button type="submit" name="action" value="approve" class="rounded-full bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700">Approve</button>
-          <button type="submit" name="action" value="decline" class="rounded-full border border-red-300 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50">Decline</button>
+          <button type="submit" name="action" value="approve" class="rounded-xl bg-green-600 px-4 py-2 text-sm font-bold text-white shadow-sm shadow-green-600/20 transition hover:bg-green-700 active:scale-[.98]">Approve</button>
+          <button type="submit" name="action" value="decline" class="rounded-xl border border-red-200 px-4 py-2 text-sm font-bold text-red-600 transition hover:bg-red-50 active:scale-[.98]">Decline</button>
         </>
       ) : (
         <>
           <input type="hidden" name="action" value="cancel" />
-          <button class="rounded-full border border-stone-300 px-4 py-2 text-sm font-bold text-stone-500 hover:bg-stone-50">Cancel</button>
+          <button class="rounded-xl border border-stone-200 px-4 py-2 text-sm font-bold text-stone-500 transition hover:bg-stone-50 active:scale-[.98]">Cancel</button>
         </>
       )}
     </form>
   </div>
 
-  <details class="mt-3 border-t border-stone-100 pt-3">
-    <summary class="cursor-pointer text-sm font-bold text-brand-700">Edit / move</summary>
+  <details class="mt-4 border-t border-stone-100 pt-4">
+    <summary class="inline-flex cursor-pointer list-none items-center gap-2 rounded-full bg-stone-50 px-3 py-1.5 text-sm font-bold text-brand-700 ring-1 ring-inset ring-stone-200 transition hover:bg-brand-50 hover:text-brand-800 [&::-webkit-details-marker]:hidden">
+      Edit / move
+    </summary>
     <form method="POST" action={`/api/admin/bookings/${lead.id}`} class="mt-3 grid gap-3 sm:grid-cols-2">
       <input type="hidden" name="action" value="edit" />
 
@@ -93,7 +95,7 @@ const dogNames = bookings.map((b) => b.dogName).join(' & ');
         <textarea name="notes" rows="2" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm">{lead.notes}</textarea>
       </div>
       <div class="sm:col-span-2 flex flex-wrap items-center gap-3">
-        <button class="rounded-full bg-brand-600 px-5 py-2 text-sm font-bold text-white hover:bg-brand-700">Save changes</button>
+        <button class="rounded-xl bg-brand-600 px-5 py-2 text-sm font-bold text-white shadow-sm shadow-brand-600/20 transition hover:bg-brand-700 active:scale-[.98]">Save changes</button>
         <p class="text-xs text-stone-500">
           {bookings.length > 1 ? 'Dogs are re-booked back-to-back from the new start time. ' : ''}
           The customer gets an updated email.
