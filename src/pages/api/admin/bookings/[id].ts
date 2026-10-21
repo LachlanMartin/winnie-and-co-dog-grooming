@@ -23,8 +23,9 @@ async function deleteInvoicesFor(bookingIds: number[]) {
 export const POST: APIRoute = async ({ request, redirect, params }) => {
   const id = Number(params.id);
   const form = await request.formData();
-  const action = String(form.get('action') ?? '');
-  const back = '/admin?tab=bookings';
+  const action = String(form.getAll('action').pop() ?? '');
+  const requested = String(form.get('return_to') ?? '');
+  const back = requested === '/admin?tab=calendar' ? requested : '/admin?tab=bookings';
   const fail = (message: string) => redirect(`${back}&error=${encodeURIComponent(message)}`);
 
   const [booking] = await db.select().from(bookings).where(eq(bookings.id, id)).limit(1);

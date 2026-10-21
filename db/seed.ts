@@ -69,11 +69,10 @@ await db.insert(workingHours).values([
   { dayOfWeek: 3, openTime: '18:30', closeTime: '20:30' }, // Wednesday
   { dayOfWeek: 4, openTime: '18:30', closeTime: '20:30' }, // Thursday
   { dayOfWeek: 5, openTime: '18:30', closeTime: '20:30' }, // Friday
-  { dayOfWeek: 6, openTime: '14:30', closeTime: '18:30' }, // Saturday (every week)
+  { dayOfWeek: 6, openTime: '14:30', closeTime: '18:30' }, // Saturday
 ]);
 
 await db.insert(settings).values([
-  { key: 'biweekly_sat_anchor', value: '' },
   { key: 'business_name', value: 'Winnie & Co Dog Grooming' },
   { key: 'invoice_prefix', value: 'INV' },
   { key: 'invoice_counter', value: '0' },

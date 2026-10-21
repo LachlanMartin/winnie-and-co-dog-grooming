@@ -12,11 +12,12 @@ Booking + invoicing website for Winnie & Co, a mobile dog grooming business in B
 
 ## Features
 
-- **Booking wizard** — one dog or several in the same request; each dog gets its own service and size. Slots respect working hours, the biweekly Saturday rule, blockouts, and existing bookings. Multiple dogs are reserved back-to-back.
+- **Booking wizard** — one dog or several in the same request; each dog gets its own service and size. Slots respect working hours, blockouts, and existing bookings. Multiple dogs are reserved back-to-back.
 - **Owner approval** — bookings land `pending`; the owner approves/declines the whole order from `/admin`. Approved bookings get a confirmation email.
+- **Admin calendar** — weekly schedule showing working hours, pending/confirmed bookings, and blocked time. Click a booking to edit, approve, deny, or cancel it; click an open time to start a booking.
 - **Admin bookings** — create a confirmed booking from `/admin`, or edit/move an existing request. Moving a family re-books every dog back-to-back and emails the customer.
 - **Invoices** — auto-generated as a draft from each booking (service price + add-ons + travel line), editable line-by-line in `/admin/invoices/[id]`, sent to the customer as a link to a printable page. Statuses: draft → sent → paid.
-- **Availability admin** — weekly hours, biweekly Saturday anchor, and one-off day/time blocks.
+- **Availability admin** — weekly hours and one-off day/time blocks.
 - **Email** — request-received, new-booking alert, confirmed, declined, invoice-sent.
 
 ## Project structure
@@ -80,7 +81,7 @@ npx tsx src/lib/availability.check.ts   # availability engine self-check
    - `PUBLIC_SITE_URL` — your production URL (used in emails)
 4. Run migrations against the Neon DB: set `DATABASE_URL` locally to the Neon URL, then `npm run db:migrate`, then `npm run db:seed`.
 
-> `db:seed` fills in services, add-ons and working hours. Re-run it on an empty DB only. The biweekly-Saturday anchor and bank details are editable in `/admin`.
+> `db:seed` fills in services, add-ons and working hours. Re-run it on an empty DB only. Bank details are editable in `/admin`.
 
 ## Data model
 

@@ -6,10 +6,11 @@ import { zonedDateTime } from '../../../lib/tz';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const POST: APIRoute = async ({ request, redirect }) => {
-  const back = '/admin?tab=bookings';
+  const form = await request.formData();
+  const requested = String(form.get('return_to') ?? '');
+  const back = requested === '/admin?tab=calendar' ? requested : '/admin?tab=bookings';
   const fail = (message: string) => redirect(`${back}&error=${encodeURIComponent(message)}`);
 
-  const form = await request.formData();
   const date = String(form.get('date') ?? '');
   const time = String(form.get('time') ?? '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {

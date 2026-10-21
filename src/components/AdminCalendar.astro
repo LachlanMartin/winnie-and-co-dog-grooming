@@ -1,0 +1,380 @@
+---
+interface CalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  status: string;
+  bookingId: number;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  address: string;
+  suburb: string;
+  notes: string;
+  date: string;
+  time: string;
+  dogs: { id: number; name: string; breed: string; service: string; size: string }[];
+}
+
+interface Props {
+  events: CalendarEvent[];
+  workingHours: { dayOfWeek: number; openTime: string; closeTime: string }[];
+  blockouts: { startAt: string; endAt: string; note: string }[];
+}
+const { events, workingHours, blockouts } = Astro.props;
+
+const shiftTime = (hm: string, minutes: number) => {
+  const [h, m] = hm.split(':').map(Number);
+  const total = Math.max(0, Math.min(23 * 60 + 59, h * 60 + m + minutes));
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+};
+
+const opens = workingHours.map((h) => h.openTime).sort();
+const closes = workingHours.map((h) => h.closeTime).sort();
+const calendarJson = JSON.stringify({
+  events,
+  businessHours: workingHours.map((h) => ({
+    daysOfWeek: [h.dayOfWeek],
+    startTime: h.openTime,
+    endTime: h.closeTime,
+  })),
+  workingHours,
+  blockouts,
+  slotMinTime: opens[0] ? shiftTime(opens[0], -60) : '07:00',
+  slotMaxTime: closes[closes.length - 1] ? shiftTime(closes[closes.length - 1], 60) : '21:00',
+  scrollTime: opens[0] ?? '08:00',
+}).replace(/</g, '\\u003c');
+---
+
+<div class="mt-4 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <p class="text-sm text-stone-500">
+      Click a booking to edit, approve, deny, or cancel it. Click an open time to start a new booking.
+    </p>
+    <div class="flex flex-wrap gap-3 text-xs font-bold">
+      <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded border border-amber-500 bg-amber-100"></span>Pending</span>
+      <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded border border-green-600 bg-green-100"></span>Confirmed</span>
+      <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded border border-stone-400 bg-stone-200"></span>Blocked</span>
+    </div>
+  </div>
+  <div id="admin-calendar" class="mt-4"></div>
+  <p id="calendar-message" class="mt-2 hidden rounded-lg bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-600"></p>
+</div>
+
+<dialog id="calendar-dialog" class="w-[min(680px,94vw)] rounded-2xl border border-stone-200 p-0 shadow-2xl backdrop:bg-stone-900/40">
+  <form id="calendar-edit-form" method="POST" class="p-5">
+    <input type="hidden" name="action" value="edit" />
+    <input type="hidden" name="return_to" value="/admin?tab=calendar" />
+
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <p id="calendar-dialog-title" class="text-lg font-extrabold text-stone-900"></p>
+        <p id="calendar-dialog-status" class="text-sm font-semibold text-stone-500"></p>
+      </div>
+      <button type="button" data-cal-close class="rounded-full p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700" aria-label="Close">✕</button>
+    </div>
+
+    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+      <div>
+        <label class="text-xs font-bold text-stone-600">Customer</label>
+        <input id="cal-customer-name" name="customer_name" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label class="text-xs font-bold text-stone-600">Phone</label>
+        <input id="cal-customer-phone" name="customer_phone" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label class="text-xs font-bold text-stone-600">Email</label>
+        <input id="cal-customer-email" name="customer_email" type="email" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label class="text-xs font-bold text-stone-600">Date</label>
+        <input id="cal-date" name="date" type="date" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label class="text-xs font-bold text-stone-600">First dog starts</label>
+        <input id="cal-time" name="time" type="time" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label class="text-xs font-bold text-stone-600">Suburb</label>
+        <input id="cal-suburb" name="suburb" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      </div>
+      <div class="sm:col-span-2">
+        <label class="text-xs font-bold text-stone-600">Address</label>
+        <input id="cal-address" name="address" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      </div>
+      <div class="sm:col-span-2">
+        <p class="text-xs font-bold text-stone-600">Dogs</p>
+        <div id="calendar-dogs" class="mt-1 grid gap-2 sm:grid-cols-2"></div>
+        <p class="mt-1 text-xs text-stone-500">Service and size can only be changed by cancelling and rebooking.</p>
+      </div>
+      <div class="sm:col-span-2">
+        <label class="text-xs font-bold text-stone-600">Notes</label>
+        <textarea id="cal-notes" name="notes" rows="2" class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"></textarea>
+      </div>
+    </div>
+
+    <div class="mt-5 flex flex-wrap gap-2 border-t border-stone-200 pt-4">
+      <button name="action" value="edit" class="rounded-full bg-brand-600 px-5 py-2 text-sm font-bold text-white hover:bg-brand-700">Save changes</button>
+      <button id="cal-approve" name="action" value="approve" formnovalidate class="rounded-full bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700">Approve</button>
+      <button id="cal-decline" name="action" value="decline" formnovalidate class="rounded-full border border-red-300 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50">Deny</button>
+      <button id="cal-cancel" name="action" value="cancel" formnovalidate class="hidden rounded-full border border-stone-300 px-4 py-2 text-sm font-bold text-stone-500 hover:bg-stone-50">Cancel booking</button>
+      <button type="button" data-cal-close class="ml-auto rounded-full border border-stone-300 px-4 py-2 text-sm font-bold text-stone-500 hover:bg-stone-50">Close</button>
+    </div>
+  </form>
+</dialog>
+
+<script is:inline id="calendar-data" type="application/json" set:html={calendarJson}></script>
+
+<script>
+import { Calendar } from 'fullcalendar';
+import timeGridPlugin from 'fullcalendar/timegrid';
+import interactionPlugin from 'fullcalendar/interaction';
+import classicThemePlugin from 'fullcalendar/themes/classic';
+import 'fullcalendar/skeleton.css';
+import 'fullcalendar/themes/classic/theme.css';
+import 'fullcalendar/themes/classic/palette.css';
+
+type CalendarDog = { id: number; name: string; breed: string; service: string; size: string };
+type CalendarEventData = {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  status: string;
+  bookingId: number;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  address: string;
+  suburb: string;
+  notes: string;
+  date: string;
+  time: string;
+  dogs: CalendarDog[];
+};
+type CalendarData = {
+  events: CalendarEventData[];
+  businessHours: { daysOfWeek: number[]; startTime: string; endTime: string }[];
+  workingHours: { dayOfWeek: number; openTime: string; closeTime: string }[];
+  blockouts: { startAt: string; endAt: string; note: string }[];
+  slotMinTime: string;
+  slotMaxTime: string;
+  scrollTime: string;
+};
+
+const data = JSON.parse(document.getElementById('calendar-data')?.textContent ?? '{}') as CalendarData;
+const calendarEl = document.getElementById('admin-calendar');
+const messageEl = document.getElementById('calendar-message');
+
+function showMessage(text: string) {
+  if (!messageEl) return;
+  messageEl.textContent = text;
+  messageEl.classList.remove('hidden');
+  window.setTimeout(() => messageEl.classList.add('hidden'), 5000);
+}
+
+function melbourneParts(date: Date) {
+  const parts = new Intl.DateTimeFormat('en-AU', {
+    timeZone: 'Australia/Melbourne',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const year = get('year');
+  const month = get('month');
+  const day = get('day');
+  let hour = get('hour');
+  if (hour === '24') hour = '00';
+  const midnight = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  return {
+    date: `${year}-${month}-${day}`,
+    time: `${hour}:${get('minute')}`,
+    dayOfWeek: midnight.getUTCDay(),
+  };
+}
+
+function isOpenTime(date: Date): boolean {
+  const parts = melbourneParts(date);
+  const row = data.workingHours.find((h) => h.dayOfWeek === parts.dayOfWeek);
+  if (!row) return false;
+  if (parts.time < row.openTime || parts.time >= row.closeTime) return false;
+  const clicked = date.getTime();
+  return !data.blockouts.some((b) => clicked >= new Date(b.startAt).getTime() && clicked < new Date(b.endAt).getTime());
+}
+
+function prefillBooking(date: Date) {
+  const parts = melbourneParts(date);
+  const details = document.getElementById('admin-create-booking') as HTMLDetailsElement | null;
+  const dateInput = document.getElementById('admin-new-date') as HTMLInputElement | null;
+  const timeInput = document.getElementById('admin-new-time') as HTMLInputElement | null;
+  if (!details || !dateInput || !timeInput) return;
+  details.open = true;
+  dateInput.value = parts.date;
+  timeInput.value = parts.time;
+  details.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  window.setTimeout(() => details.querySelector<HTMLInputElement>('[name="customer_name"]')?.focus(), 300);
+}
+
+function openBooking(booking: CalendarEventData) {
+  const dialog = document.getElementById('calendar-dialog') as HTMLDialogElement | null;
+  const form = document.getElementById('calendar-edit-form') as HTMLFormElement | null;
+  if (!dialog || !form) return;
+
+  form.action = `/api/admin/bookings/${booking.bookingId}`;
+  const set = (id: string, value: string) => {
+    const el = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | null;
+    if (el) el.value = value;
+  };
+  set('cal-customer-name', booking.customerName);
+  set('cal-customer-phone', booking.customerPhone);
+  set('cal-customer-email', booking.customerEmail);
+  set('cal-date', booking.date);
+  set('cal-time', booking.time);
+  set('cal-suburb', booking.suburb);
+  set('cal-address', booking.address);
+  set('cal-notes', booking.notes);
+
+  const title = document.getElementById('calendar-dialog-title');
+  const status = document.getElementById('calendar-dialog-status');
+  if (title) title.textContent = `${booking.customerName} — ${booking.dogs.map((d) => d.name).join(' & ')}`;
+  if (status) status.textContent = booking.status === 'pending' ? 'Pending approval' : 'Confirmed';
+
+  const dogs = document.getElementById('calendar-dogs');
+  if (dogs) {
+    dogs.replaceChildren();
+    booking.dogs.forEach((dog) => {
+      const row = document.createElement('div');
+      row.className = 'flex flex-wrap items-center gap-2 rounded-lg bg-stone-50 p-2';
+      const id = document.createElement('input');
+      id.type = 'hidden';
+      id.name = 'dog_id';
+      id.value = String(dog.id);
+      const name = document.createElement('input');
+      name.name = 'dog_name';
+      name.value = dog.name;
+      name.required = true;
+      name.setAttribute('aria-label', 'Dog name');
+      name.className = 'min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm';
+      const breed = document.createElement('input');
+      breed.name = 'dog_breed';
+      breed.value = dog.breed;
+      breed.placeholder = 'Breed';
+      breed.setAttribute('aria-label', 'Dog breed');
+      breed.className = 'min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm';
+      const service = document.createElement('span');
+      service.className = 'text-xs font-semibold text-stone-500';
+      service.textContent = `${dog.service}${dog.size ? ` · ${dog.size}` : ''}`;
+      row.append(id, name, breed, service);
+      dogs.append(row);
+    });
+  }
+
+  const approve = document.getElementById('cal-approve');
+  const decline = document.getElementById('cal-decline');
+  const cancel = document.getElementById('cal-cancel');
+  approve?.classList.toggle('hidden', booking.status !== 'pending');
+  decline?.classList.toggle('hidden', booking.status !== 'pending');
+  cancel?.classList.toggle('hidden', booking.status !== 'confirmed');
+
+  dialog.showModal();
+}
+
+if (calendarEl) {
+  const calendar = new Calendar(calendarEl, {
+    plugins: [timeGridPlugin, interactionPlugin, classicThemePlugin],
+    initialView: 'timeGridWeek',
+    timeZone: 'Australia/Melbourne',
+    firstDay: 1,
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'timeGridWeek,timeGridDay',
+    },
+    businessHours: data.businessHours,
+    slotMinTime: data.slotMinTime,
+    slotMaxTime: data.slotMaxTime,
+    scrollTime: data.scrollTime,
+    slotDuration: '00:30',
+    allDaySlot: true,
+    allDayText: 'All day',
+    nowIndicator: true,
+    height: 'auto',
+    eventTimeFormat: { hour: 'numeric', minute: '2-digit', meridiem: 'short', hour12: true },
+    events: [
+      ...data.events.map((event) => ({
+        id: event.id,
+        title: event.title,
+        start: event.start,
+        end: event.end,
+        color: event.status === 'pending' ? '#fbbf24' : '#22c55e',
+        contrastColor: event.status === 'pending' ? '#78350f' : '#052e16',
+        className: event.status === 'pending' ? 'cal-pending' : 'cal-confirmed',
+        extendedProps: event,
+      })),
+      ...data.blockouts.map((block, i) => ({
+        id: `block-${i}`,
+        title: block.note || 'Blocked',
+        start: block.startAt,
+        end: block.endAt,
+        display: 'background',
+        color: '#d6d3d1',
+        contrastColor: '#57534e',
+        className: 'cal-blocked',
+      })),
+    ],
+    dateClick(info) {
+      if (info.allDay) return;
+      if (!isOpenTime(info.date)) {
+        showMessage('That time is outside working hours or blocked.');
+        return;
+      }
+      prefillBooking(info.date);
+    },
+    eventClick(info) {
+      info.jsEvent.preventDefault();
+      openBooking(info.event.extendedProps as CalendarEventData);
+    },
+  });
+  calendar.render();
+
+  const dialog = document.getElementById('calendar-dialog') as HTMLDialogElement | null;
+  document.querySelectorAll('[data-cal-close]').forEach((button) => {
+    button.addEventListener('click', () => dialog?.close());
+  });
+  dialog?.addEventListener('click', (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+}
+</script>
+
+<style>
+  #admin-calendar {
+    --fc-classic-primary: #0789c5;
+    --fc-classic-primary-foreground: #ffffff;
+    --fc-classic-button: #78716c;
+    --fc-classic-button-border: #78716c;
+    --fc-classic-button-strong: #57534e;
+    --fc-classic-button-strong-border: #44403c;
+    --fc-classic-button-outline: #a8a29e;
+    --fc-classic-highlight: #e0f2fe66;
+    --fc-classic-today: #fef3c766;
+    --fc-classic-border: #e7e5e4;
+    --fc-classic-border-style: solid;
+    font-size: 14px;
+  }
+  #admin-calendar .cal-pending {
+    border-style: dashed !important;
+  }
+  #admin-calendar .cal-confirmed {
+    font-weight: 700;
+  }
+  #admin-calendar .fc-event-title {
+    white-space: normal;
+  }
+</style>

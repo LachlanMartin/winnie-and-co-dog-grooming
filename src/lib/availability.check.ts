@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { isOnSaturday, overlaps, scheduleSlots, slotStartTimes } from './availability';
+import { overlaps, scheduleSlots, slotStartTimes } from './availability';
 
 // Run with: npx tsx src/lib/availability.check.ts
 let failed = 0;
@@ -18,14 +18,6 @@ const starts = (w: [string, string], dur: number) =>
     dur,
     null,
   ).map((d) => d.toISOString().slice(11, 16));
-
-// Biweekly Saturday rule: anchor is a known "on" Saturday.
-const anchor = '2026-08-22';
-check('anchor itself is on', isOnSaturday('2026-08-22', anchor), true);
-check('+2 weeks is on', isOnSaturday('2026-09-05', anchor), true);
-check('+4 weeks is on', isOnSaturday('2026-10-03', anchor), true);
-check('+1 week is off', isOnSaturday('2026-08-29', anchor), false);
-check('+3 weeks is off', isOnSaturday('2026-09-12', anchor), false);
 
 // Overlap detection.
 const busy: [Date, Date][] = [

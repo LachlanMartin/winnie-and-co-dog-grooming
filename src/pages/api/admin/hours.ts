@@ -2,7 +2,6 @@ import type { APIRoute } from 'astro';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../../lib/db';
 import { workingHours } from '../../../../db/schema';
-import { setSetting } from '../../../lib/settings';
 
 export const POST: APIRoute = async ({ request, redirect }) => {
   const form = await request.formData();
@@ -29,11 +28,6 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     } else if (!enabled && existing[0]) {
       await db.delete(workingHours).where(and(eq(workingHours.dayOfWeek, day)));
     }
-  }
-
-  const anchor = String(form.get('biweekly_sat_anchor') ?? '').trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(anchor) || anchor === '') {
-    await setSetting('biweekly_sat_anchor', anchor);
   }
 
   return redirect('/admin?tab=hours');

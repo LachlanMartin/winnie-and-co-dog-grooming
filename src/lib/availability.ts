@@ -1,10 +1,8 @@
 import { and, eq, gt, inArray, lt } from 'drizzle-orm';
-import { differenceInCalendarDays } from 'date-fns';
 import { db } from './db';
 import { blockouts, bookings, services, workingHours } from '../../db/schema';
 import type { Service } from '../../db/schema';
-import { getSetting } from './settings';
-import { SLOT_GRID_MINUTES, dateStr, isoDayOfWeek, parseDateOnly, zonedDateTime } from './tz';
+import { SLOT_GRID_MINUTES, dateStr, isoDayOfWeek, zonedDateTime } from './tz';
 
 export const SIZES = ['small', 'medium', 'large', 'xl'] as const;
 export type Size = (typeof SIZES)[number];
@@ -66,24 +64,11 @@ export async function loadDogSelections(ids: number[], sizes: (string | null)[])
   return dogs;
 }
 
-/** True when the business-tz date is an "on" Saturday under the biweekly rule. */
-export function isOnSaturday(s: string, anchor: string): boolean {
-  return differenceInCalendarDays(parseDateOnly(s), parseDateOnly(anchor)) % 14 === 0;
-}
-
-async function biweeklySatOpen(s: string): Promise<boolean> {
-  if (isoDayOfWeek(s) !== 6) return true;
-  const anchor = await getSetting('biweekly_sat_anchor');
-  if (!anchor) return true; // no anchor -> every Saturday is open
-  return isOnSaturday(s, anchor);
-}
-
 /** Open/close window (UTC) for a business-tz date, or null if closed. */
 export async function getWorkingWindow(s: string): Promise<{ start: Date; end: Date } | null> {
   const day = isoDayOfWeek(s) % 7; // 0=Sun .. 6=Sat
   const rows = await db.select().from(workingHours).where(eq(workingHours.dayOfWeek, day)).limit(1);
   if (!rows.length) return null;
-  if (day === 6 && !(await biweeklySatOpen(s))) return null;
   return { start: zonedDateTime(s, rows[0].openTime), end: zonedDateTime(s, rows[0].closeTime) };
 }
 

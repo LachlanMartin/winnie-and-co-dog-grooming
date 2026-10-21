@@ -11,12 +11,13 @@ import {
 } from '../../../db/schema';
 import { getSettings } from '../../lib/settings';
 import { money } from '../../lib/money';
-import { dayLabel, timeOfDay } from '../../lib/tz';
+import { dayLabel, dateStr, timeOfDay } from '../../lib/tz';
 import { SIZE_LABELS } from '../../lib/availability';
 import AdminBookingCard from '../../components/AdminBookingCard.astro';
 import AdminCreateBooking from '../../components/AdminCreateBooking.astro';
+import AdminCalendar from '../../components/AdminCalendar.astro';
 
-const tab = Astro.url.searchParams.get('tab') ?? 'bookings';
+const tab = Astro.url.searchParams.get('tab') ?? 'calendar';
 const error = Astro.url.searchParams.get('error');
 const saved = Astro.url.searchParams.get('saved');
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -69,7 +70,46 @@ const past = orders.filter(
   (o) => o.status === 'cancelled' || (o.status === 'confirmed' && o.slotStart <= new Date()),
 );
 
-const settings = await getSettings(['business_name', 'abn', 'bank_details', 'invoice_prefix', 'biweekly_sat_anchor']);
+const calendarHours = hourRows.map((h) => ({
+  dayOfWeek: h.dayOfWeek,
+  openTime: h.openTime.slice(0, 5),
+  closeTime: h.closeTime.slice(0, 5),
+}));
+const calendarEvents = orders
+  .filter((o) => o.status === 'pending' || o.status === 'confirmed')
+  .map((o) => {
+    const last = o.bookings[o.bookings.length - 1];
+    return {
+      id: o.key,
+      title: o.bookings.map((b) => b.dogName).join(' & ') + (o.bookings.length > 1 ? ` (${o.bookings.length})` : ''),
+      start: o.lead.slotStart.toISOString(),
+      end: last.slotEnd.toISOString(),
+      status: o.status,
+      bookingId: o.lead.id,
+      customerName: o.lead.customerName,
+      customerEmail: o.lead.customerEmail,
+      customerPhone: o.lead.customerPhone,
+      address: o.lead.address,
+      suburb: o.lead.suburb,
+      notes: o.lead.notes,
+      date: dateStr(o.lead.slotStart),
+      time: timeOfDay(o.lead.slotStart),
+      dogs: o.bookings.map((b) => ({
+        id: b.id,
+        name: b.dogName,
+        breed: b.dogBreed,
+        service: b.service?.name ?? 'Service',
+        size: b.size ?? '',
+      })),
+    };
+  });
+const calendarBlocks = blockRows.map((b) => ({
+  startAt: b.startAt.toISOString(),
+  endAt: b.endAt.toISOString(),
+  note: b.note,
+}));
+
+const settings = await getSettings(['business_name', 'abn', 'bank_details', 'invoice_prefix']);
 const statusBadge: Record<string, string> = {
   pending: 'bg-brand-100 text-brand-800',
   confirmed: 'bg-green-100 text-green-700',
@@ -78,6 +118,7 @@ const statusBadge: Record<string, string> = {
 };
 
 const tabs = [
+  ['calendar', 'Calendar'],
   ['bookings', 'Bookings'],
   ['hours', 'Hours'],
   ['blockouts', 'Days off'],
@@ -118,6 +159,38 @@ const tabs = [
     </header>
 
     <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <!-- ============ CALENDAR ============ -->
+      {tab === 'calendar' && (
+        <>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h1 class="text-2xl font-black">Calendar</h1>
+            <div class="flex gap-2">
+              <a href="/admin?tab=hours" class="rounded-full border border-stone-300 px-4 py-1.5 text-sm font-bold text-stone-600 hover:bg-stone-50">Edit hours</a>
+              <a href="/admin?tab=blockouts" class="rounded-full border border-stone-300 px-4 py-1.5 text-sm font-bold text-stone-600 hover:bg-stone-50">Days off</a>
+            </div>
+          </div>
+
+          {error && (
+            <p class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p>
+          )}
+          {saved && (
+            <p class="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">Saved.</p>
+          )}
+
+          <AdminCalendar events={calendarEvents} workingHours={calendarHours} blockouts={calendarBlocks} />
+
+          <div class="mt-4">
+            <AdminCreateBooking
+              services={serviceRows}
+              addons={addonRows}
+              sizeLabels={SIZE_LABELS}
+              returnTo="/admin?tab=calendar"
+              prefillHint
+            />
+          </div>
+        </>
+      )}
+
       <!-- ============ BOOKINGS ============ -->
       {tab === 'bookings' && (
         <>

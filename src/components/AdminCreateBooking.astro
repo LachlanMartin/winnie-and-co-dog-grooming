@@ -10,8 +10,10 @@ interface Props {
   }[];
   addons: { id: number; name: string; priceCents: number }[];
   sizeLabels: Record<string, string>;
+  returnTo?: string;
+  prefillHint?: boolean;
 }
-const { services, addons, sizeLabels } = Astro.props;
+const { services, addons, sizeLabels, returnTo = '/admin?tab=bookings', prefillHint = false } = Astro.props;
 const sizes = ['small', 'medium', 'large', 'xl'] as const;
 const priced = services.map((s) => ({
   id: s.id,
@@ -24,12 +26,15 @@ const priced = services.map((s) => ({
 const today = dateStr(new Date());
 ---
 
-<details class="rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
+<details id="admin-create-booking" class="rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
   <summary class="cursor-pointer font-extrabold text-brand-700">+ Create booking</summary>
-  <p class="mt-1 text-sm text-stone-500">For phone or message bookings. It's confirmed immediately and the customer gets a confirmation email.</p>
+  <p class="mt-1 text-sm text-stone-500">
+    {prefillHint ? 'Click an open time in the calendar to fill the date and start time, or enter them here.' : "For phone or message bookings. It's confirmed immediately and the customer gets a confirmation email."}
+  </p>
 
   <form id="admin-booking-form" method="POST" action="/api/admin/bookings" class="mt-4 grid gap-3 sm:grid-cols-2">
     <input type="hidden" name="dogs" />
+    <input type="hidden" name="return_to" value={returnTo} />
 
     <div>
       <label class="text-xs font-bold text-stone-600">Customer</label>
@@ -75,11 +80,11 @@ const today = dateStr(new Date());
 
     <div>
       <label class="text-xs font-bold text-stone-600">Date</label>
-      <input name="date" type="date" min={today} required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      <input id="admin-new-date" name="date" type="date" min={today} required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
     </div>
     <div>
       <label class="text-xs font-bold text-stone-600">First dog starts</label>
-      <input name="time" type="time" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+      <input id="admin-new-time" name="time" type="time" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
     </div>
 
     <div class="sm:col-span-2">
@@ -104,7 +109,6 @@ const today = dateStr(new Date());
     </div>
   </form>
 </details>
-
 <script>
 const rows = document.getElementById('admin-dog-rows') as HTMLElement;
 const template = document.getElementById('admin-dog-template') as HTMLTemplateElement;
