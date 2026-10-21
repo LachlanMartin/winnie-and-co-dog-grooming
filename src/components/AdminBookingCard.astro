@@ -1,6 +1,7 @@
 ---
 import type { Booking, Service } from '../../db/schema';
 import { dateStr, dayLabel, timeOfDay } from '../lib/tz';
+import { formatDuration } from '../lib/duration';
 
 type EnrichedBooking = Booking & { service?: Service; addonNames: string[] };
 
@@ -12,6 +13,9 @@ const { bookings, mode } = Astro.props;
 const lead = bookings[0];
 const addonNames = [...new Set(bookings.flatMap((b) => b.addonNames))];
 const dogNames = bookings.map((b) => b.dogName).join(' & ');
+const minutesFor = (b: EnrichedBooking) =>
+  Math.max(0, Math.round((b.slotEnd.getTime() - b.slotStart.getTime()) / 60000));
+const totalMinutes = bookings.reduce((sum, b) => sum + minutesFor(b), 0);
 ---
 
 <div class="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-sm">
@@ -23,9 +27,12 @@ const dogNames = bookings.map((b) => b.dogName).join(' & ');
       </p>
       {bookings.map((b) => (
         <p class="text-sm text-stone-500">
-          {b.dogName}: {b.service?.name}{b.size ? ` · ${b.size}` : ''} · {dayLabel(b.slotStart)} at {timeOfDay(b.slotStart)}
+          {b.dogName}: {b.service?.name}{b.size ? ` · ${b.size}` : ''} · {formatDuration(minutesFor(b))} · {dayLabel(b.slotStart)} at {timeOfDay(b.slotStart)}
         </p>
       ))}
+      {bookings.length > 1 && (
+        <p class="mt-1 text-xs font-bold text-brand-700">Total visit: {formatDuration(totalMinutes)}</p>
+      )}
       <p class="mt-1 text-sm text-stone-500">{lead.customerEmail} · {lead.customerPhone}</p>
       <p class="text-sm text-stone-500">{lead.address}{lead.suburb ? `, ${lead.suburb}` : ''}</p>
       {addonNames.length > 0 && <p class="mt-1 text-xs font-semibold text-brand-700">Add-ons: {addonNames.join(', ')}</p>}

@@ -2,6 +2,7 @@
 import { loadInvoiceByToken } from '../../lib/invoice';
 import { money } from '../../lib/money';
 import { dayLabel, slotLabel } from '../../lib/tz';
+import { formatDuration } from '../../lib/duration';
 import { getSettings } from '../../lib/settings';
 import type { InvoiceItem } from '../../../db/schema';
 import '../../styles/global.css';
@@ -67,7 +68,7 @@ const settings = data ? await getSettings(['bank_details', 'abn', 'business_name
               </div>
               <div class="text-sm sm:text-right">
                 <p class="font-bold text-stone-500">APPOINTMENT</p>
-                <p class="mt-1 font-extrabold">{service?.name}{b.size ? ` · ${b.size}` : ''}</p>
+                <p class="mt-1 font-extrabold">{service?.name}{b.size ? ` · ${b.size}` : ''} · {formatDuration(Math.round((b.slotEnd.getTime() - b.slotStart.getTime()) / 60000))}</p>
                 <p>{dayLabel(b.slotStart)} at {slotLabel(b.slotStart).split(',').pop()}</p>
                 <p>{b.dogName}{b.dogBreed ? ` (${b.dogBreed})` : ''}</p>
                 {inv.dueDate && <p>Due {inv.dueDate}</p>}

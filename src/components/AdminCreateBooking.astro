@@ -1,5 +1,6 @@
 ---
 import { money } from '../lib/money';
+import { formatDuration } from '../lib/duration';
 import { dateStr } from '../lib/tz';
 
 interface Props {
@@ -7,6 +8,8 @@ interface Props {
     id: number; name: string; hasSizes: boolean;
     priceFlat: number | null; priceS: number | null; priceM: number | null;
     priceL: number | null; priceXl: number | null;
+    durationFlat: number | null; durationS: number | null; durationM: number | null;
+    durationL: number | null; durationXl: number | null;
   }[];
   addons: { id: number; name: string; priceCents: number }[];
   sizeLabels: Record<string, string>;
@@ -15,14 +18,32 @@ interface Props {
 }
 const { services, addons, sizeLabels, returnTo = '/admin?tab=bookings', prefillHint = false } = Astro.props;
 const sizes = ['small', 'medium', 'large', 'xl'] as const;
-const priced = services.map((s) => ({
-  id: s.id,
-  name: s.name,
-  hasSizes: s.hasSizes,
-  price: s.hasSizes
-    ? 'from ' + money(Math.min(...[s.priceS, s.priceM, s.priceL, s.priceXl].filter((n): n is number => n != null)))
-    : money(s.priceFlat ?? 0),
-}));
+const priced = services.map((s) => {
+  const durations = [s.durationS, s.durationM, s.durationL, s.durationXl].filter(
+    (n): n is number => n != null,
+  );
+  const min = durations.length ? Math.min(...durations) : (s.durationFlat ?? 60);
+  const max = durations.length ? Math.max(...durations) : (s.durationFlat ?? 60);
+  const duration = s.hasSizes
+    ? min === max
+      ? formatDuration(min)
+      : `${formatDuration(min)}–${formatDuration(max)}`
+    : formatDuration(s.durationFlat ?? 60);
+  return {
+    id: s.id,
+    name: s.name,
+    hasSizes: s.hasSizes,
+    price: s.hasSizes
+      ? 'from ' + money(Math.min(...[s.priceS, s.priceM, s.priceL, s.priceXl].filter((n): n is number => n != null)))
+      : money(s.priceFlat ?? 0),
+    duration,
+    durationFlat: s.durationFlat ?? '',
+    durationS: s.durationS ?? '',
+    durationM: s.durationM ?? '',
+    durationL: s.durationL ?? '',
+    durationXl: s.durationXl ?? '',
+  };
+});
 const today = dateStr(new Date());
 ---
 
@@ -69,16 +90,28 @@ const today = dateStr(new Date());
           <input name="dog_breed" placeholder="Breed" aria-label="Breed" class="min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm" />
           <select name="service" required aria-label="Service" class="rounded-lg border border-stone-300 px-2 py-2 text-sm">
             <option value="">Service…</option>
-            {priced.map((s) => <option value={s.id} data-sizes={s.hasSizes ? '1' : ''}>{s.name} — {s.price}</option>)}
+            {priced.map((s) => (
+              <option
+                value={s.id}
+                data-sizes={s.hasSizes ? '1' : ''}
+                data-flat-duration={s.durationFlat}
+                data-small-duration={s.durationS}
+                data-medium-duration={s.durationM}
+                data-large-duration={s.durationL}
+                data-xl-duration={s.durationXl}
+              >{s.name} — {s.price} · {s.duration}</option>
+            ))}
           </select>
           <select name="size" aria-label="Size" class="hidden rounded-lg border border-stone-300 px-2 py-2 text-sm">
             <option value="">Size…</option>
             {sizes.map((z) => <option value={z}>{sizeLabels[z]}</option>)}
           </select>
+          <span data-admin-dog-duration class="w-full text-xs font-semibold text-brand-700"></span>
           <button type="button" data-remove-dog class="text-sm font-bold text-red-500 hover:text-red-700">Remove</button>
         </div>
       </template>
       <button type="button" id="admin-add-dog" class="mt-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-600 shadow-sm transition hover:border-stone-300 hover:bg-stone-50 active:scale-[.98]">+ Add another dog</button>
+      <p id="admin-total-duration" class="mt-2 text-xs font-bold text-brand-700"></p>
     </div>
 
     <div>
@@ -131,18 +164,49 @@ function syncRow(row: HTMLElement) {
   size.classList.toggle('hidden', !hasSizes);
   if (!hasSizes) size.value = '';
 }
+function fmtDuration(minutes: number): string {
+  const total = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
+  return [hours ? `${hours}h` : '', mins ? `${mins}m` : ''].filter(Boolean).join(' ') || '0m';
+}
+function durationForRow(row: HTMLElement): number {
+  const select = row.querySelector<HTMLSelectElement>('[name="service"]');
+  const option = select?.selectedOptions[0];
+  if (!option?.value) return 0;
+  if (option.dataset.sizes === '1') {
+    const size = row.querySelector<HTMLSelectElement>('[name="size"]')?.value;
+    return size ? Number(option.dataset[`${size}Duration`] ?? 0) : 0;
+  }
+  return Number(option.dataset.flatDuration ?? 0);
+}
+function syncDuration(row: HTMLElement) {
+  const el = row.querySelector<HTMLElement>('[data-admin-dog-duration]');
+  if (!el) return;
+  const minutes = durationForRow(row);
+  el.textContent = minutes ? `Groom time: ${fmtDuration(minutes)}` : '';
+}
 function refresh() {
   const all = dogRows();
+  let total = 0;
   all.forEach((row) => {
     row.querySelector('[data-remove-dog]')?.classList.toggle('hidden', all.length === 1);
+    syncDuration(row);
+    total += durationForRow(row);
   });
+  const totalEl = document.getElementById('admin-total-duration');
+  if (totalEl) totalEl.textContent = total ? `Total visit: ${fmtDuration(total)}` : '';
 }
 function addRow() {
   const fragment = template.content.cloneNode(true) as DocumentFragment;
   const row = fragment.querySelector<HTMLElement>('[data-admin-dog]');
   if (!row) return;
   rows.appendChild(fragment);
-  row.querySelector('[name="service"]')?.addEventListener('change', () => syncRow(row));
+  row.querySelector('[name="service"]')?.addEventListener('change', () => {
+    syncRow(row);
+    refresh();
+  });
+  row.querySelector('[name="size"]')?.addEventListener('change', refresh);
   row.querySelector('[data-remove-dog]')?.addEventListener('click', () => {
     row.remove();
     refresh();

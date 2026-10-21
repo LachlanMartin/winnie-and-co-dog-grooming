@@ -4,6 +4,7 @@ import { db } from '../../../lib/db';
 import { bookings, invoiceItems, invoices, services } from '../../../../db/schema';
 import { money } from '../../../lib/money';
 import { dayLabel } from '../../../lib/tz';
+import { formatDuration } from '../../../lib/duration';
 
 const id = Number(Astro.params.id);
 const [inv] = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
@@ -17,6 +18,7 @@ if (!inv) {
 if (!booking) {
   return Astro.redirect('/admin?tab=invoices');
 }
+const appointmentMinutes = Math.max(0, Math.round((booking.slotEnd.getTime() - booking.slotStart.getTime()) / 60000));
 const total = items.reduce((s, i) => s + i.unitPriceCents * i.quantity, 0);
 const dueDate = inv.dueDate ? new Date(`${inv.dueDate}T00:00:00`) : null;
 const dueDateInput = dueDate ? dueDate.toISOString().slice(0, 10) : '';
@@ -49,7 +51,7 @@ const dueDateInput = dueDate ? dueDate.toISOString().slice(0, 10) : '';
           <div>
             <p class="text-lg font-extrabold">{booking.customerName} — {booking.dogName}</p>
             <p class="text-sm text-stone-500">
-              {service?.name}{booking.size ? ` · ${booking.size}` : ''} · {dayLabel(booking.slotStart)}
+              {service?.name}{booking.size ? ` · ${booking.size}` : ''} · {formatDuration(appointmentMinutes)} · {dayLabel(booking.slotStart)}
             </p>
           </div>
           <p class="text-right">

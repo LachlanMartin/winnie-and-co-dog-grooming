@@ -1,11 +1,14 @@
 ---
 import { money } from '../lib/money';
+import { formatDuration } from '../lib/duration';
 
 interface Props {
   services: {
     id: number; name: string; slug: string; description: string; hasSizes: boolean;
     priceFlat: number | null; priceS: number | null; priceM: number | null;
     priceL: number | null; priceXl: number | null;
+    durationFlat: number | null; durationS: number | null; durationM: number | null;
+    durationL: number | null; durationXl: number | null;
   }[];
   addons: { id: number; name: string; priceCents: number }[];
   preselect: string | null;
@@ -13,14 +16,27 @@ interface Props {
 }
 const { services, addons, preselect, sizeLabels } = Astro.props;
 const sizes = ['small', 'medium', 'large', 'xl'] as const;
-const priced = services.map((s) => ({
-  id: s.id,
-  name: s.name,
-  hasSizes: s.hasSizes,
-  price: s.hasSizes
-    ? 'from ' + money(Math.min(...[s.priceS, s.priceM, s.priceL, s.priceXl].filter((n): n is number => n != null)))
-    : money(s.priceFlat ?? 0),
-}));
+const priced = services.map((s) => {
+  const durations = [s.durationS, s.durationM, s.durationL, s.durationXl].filter(
+    (n): n is number => n != null,
+  );
+  const min = durations.length ? Math.min(...durations) : (s.durationFlat ?? 60);
+  const max = durations.length ? Math.max(...durations) : (s.durationFlat ?? 60);
+  const duration = s.hasSizes
+    ? min === max
+      ? formatDuration(min)
+      : `${formatDuration(min)}–${formatDuration(max)}`
+    : formatDuration(s.durationFlat ?? 60);
+  return {
+    id: s.id,
+    name: s.name,
+    hasSizes: s.hasSizes,
+    price: s.hasSizes
+      ? 'from ' + money(Math.min(...[s.priceS, s.priceM, s.priceL, s.priceXl].filter((n): n is number => n != null)))
+      : money(s.priceFlat ?? 0),
+    duration,
+  };
+});
 const btn = 'mt-4 rounded-full bg-brand-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed';
 const backBtn = 'mt-4 rounded-full border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-600 transition hover:bg-stone-50';
 ---
@@ -50,7 +66,7 @@ const backBtn = 'mt-4 rounded-full border border-stone-300 px-5 py-2.5 text-sm f
             <label class="text-sm font-bold text-stone-700">Service *</label>
             <select name="service" required class="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2">
               <option value="">Choose a service…</option>
-              {priced.map((s) => <option value={s.id}>{s.name} — {s.price}</option>)}
+              {priced.map((s) => <option value={s.id}>{s.name} — {s.price} · {s.duration}</option>)}
             </select>
           </div>
           <div>
@@ -60,6 +76,7 @@ const backBtn = 'mt-4 rounded-full border border-stone-300 px-5 py-2.5 text-sm f
               {sizes.map((z) => <option value={z}>{sizeLabels[z]}</option>)}
             </select>
           </div>
+          <p data-dog-duration class="hidden text-sm font-semibold text-brand-700 sm:col-span-2"></p>
         </div>
       </div>
     </template>
@@ -103,6 +120,7 @@ const backBtn = 'mt-4 rounded-full border border-stone-300 px-5 py-2.5 text-sm f
     <div class="mt-3 rounded-xl bg-brand-50 p-4 text-sm text-brand-900">
       <p class="font-bold">Your booking</p>
       <p id="selected-dogs" class="mt-1"></p>
+      <p id="selected-duration" class="mt-1 font-bold"></p>
     </div>
     <form id="booking-form" class="mt-3 grid gap-4 sm:grid-cols-2">
       <input type="hidden" name="start" id="f-start" />
@@ -208,11 +226,40 @@ function clearAppointment() {
   nextDate.disabled = true;
 }
 
+function fmtDuration(minutes) {
+  const total = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
+  return [hours ? hours + 'h' : '', mins ? mins + 'm' : ''].filter(Boolean).join(' ') || '0m';
+}
+
+function durationForRow(row) {
+  const svc = rowService(row);
+  if (!svc) return 0;
+  if (!svc.hasSizes) return svc.durationFlat ?? 60;
+  const size = row.querySelector('[name="size"]').value;
+  return {
+    small: svc.durationS,
+    medium: svc.durationM,
+    large: svc.durationL,
+    xl: svc.durationXl,
+  }[size] ?? 0;
+}
+
+function syncDuration(row) {
+  const el = row.querySelector('[data-dog-duration]');
+  const minutes = durationForRow(row);
+  if (!el) return;
+  el.textContent = minutes ? 'Groom time: ' + fmtDuration(minutes) : '';
+  el.classList.toggle('hidden', !minutes);
+}
+
 function syncRow(row) {
   const svc = rowService(row);
   const size = row.querySelector('[name="size"]');
   size.classList.toggle('hidden', !svc || !svc.hasSizes);
   if (!svc || !svc.hasSizes) size.value = '';
+  syncDuration(row);
 }
 
 function rowsAreValid() {
@@ -230,6 +277,7 @@ function refreshRows() {
   rows.forEach((row, i) => {
     row.querySelector('[data-dog-title]').textContent = 'Dog ' + (i + 1);
     row.querySelector('[data-remove-dog]').classList.toggle('hidden', rows.length === 1);
+    syncDuration(row);
   });
   nextDogs.disabled = !rowsAreValid();
 }
@@ -263,6 +311,7 @@ function bindRow(row) {
   });
   row.querySelector('[name="dog_name"]').addEventListener('input', refreshRows);
   row.querySelector('[name="size"]').addEventListener('change', () => {
+    syncDuration(row);
     clearAppointment();
     refreshRows();
   });
@@ -365,6 +414,8 @@ function renderSummary() {
     return `${dog.name} — ${svc ? svc.name : ''}${size}`;
   });
   $('#selected-dogs').textContent = parts.join(' · ');
+  const total = dogRows().reduce((sum, row) => sum + durationForRow(row), 0);
+  $('#selected-duration').textContent = total ? 'Total appointment time: ' + fmtDuration(total) : '';
 }
 
 $('#add-dog').addEventListener('click', () => {
