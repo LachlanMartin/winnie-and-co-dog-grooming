@@ -17,6 +17,7 @@ import type { Size } from '../../lib/availability';
 import AdminBookingCard from '../../components/AdminBookingCard.astro';
 import AdminCreateBooking from '../../components/AdminCreateBooking.astro';
 import AdminCalendar from '../../components/AdminCalendar.astro';
+import AdminServices from '../../components/AdminServices.astro';
 
 const tab = Astro.url.searchParams.get('tab') ?? 'calendar';
 const error = Astro.url.searchParams.get('error');
@@ -124,6 +125,7 @@ const statusBadge: Record<string, string> = {
 const tabs = [
   ['calendar', 'Calendar'],
   ['bookings', 'Bookings'],
+  ['services', 'Services'],
   ['hours', 'Hours'],
   ['blockouts', 'Days off'],
   ['invoices', 'Invoices'],
@@ -277,11 +279,30 @@ const tabs = [
         </>
       )}
 
+      <!-- ============ SERVICES ============ -->
+      {tab === 'services' && (
+        <>
+          {error && (
+            <p class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p>
+          )}
+          {saved && (
+            <p class="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">Saved.</p>
+          )}
+          <AdminServices services={serviceRows} addons={addonRows} />
+        </>
+      )}
+
       <!-- ============ HOURS ============ -->
       {tab === 'hours' && (
         <>
           <h1 class="text-3xl font-black tracking-tight">Working hours</h1>
           <p class="mt-1 text-sm text-stone-500">Tick a day to enable it.</p>
+          {error && (
+            <p class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p>
+          )}
+          {saved && (
+            <p class="mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">Saved.</p>
+          )}
           <form method="POST" action="/api/admin/hours" class="mt-6 rounded-2xl border border-stone-200/80 bg-white p-6 shadow-sm">
             <div class="space-y-2">
               {DAYS.map((dayName, day) => {

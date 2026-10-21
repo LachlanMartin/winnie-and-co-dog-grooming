@@ -1,0 +1,137 @@
+---
+import type { Addon, Service } from '../../db/schema';
+import { formatDuration } from '../lib/duration';
+import { money } from '../lib/money';
+import AdminServiceForm from './AdminServiceForm.astro';
+import AdminAddonForm from './AdminAddonForm.astro';
+
+interface Props {
+  services: Service[];
+  addons: Addon[];
+}
+const { services, addons } = Astro.props;
+
+const priceSummary = (s: Service) => {
+  if (!s.hasSizes) return money(s.priceFlat ?? 0);
+  const prices = [s.priceS, s.priceM, s.priceL, s.priceXl].filter((n): n is number => n != null);
+  return prices.length ? 'From ' + money(Math.min(...prices)) : 'No price set';
+};
+const durationSummary = (s: Service) => {
+  if (!s.hasSizes) return formatDuration(s.durationFlat ?? 60);
+  const durations = [s.durationS, s.durationM, s.durationL, s.durationXl].filter((n): n is number => n != null);
+  if (!durations.length) return 'No duration set';
+  const min = Math.min(...durations);
+  const max = Math.max(...durations);
+  return min === max ? formatDuration(min) : `${formatDuration(min)}–${formatDuration(max)}`;
+};
+const nextServiceOrder = Math.max(0, ...services.map((s) => s.sortOrder)) + 1;
+const nextAddonOrder = Math.max(0, ...addons.map((a) => a.sortOrder)) + 1;
+---
+
+<div class="flex flex-wrap items-end justify-between gap-3">
+  <div>
+    <h1 class="text-3xl font-black tracking-tight">Services &amp; pricing</h1>
+    <p class="mt-1 max-w-2xl text-sm text-stone-500">Change what customers can book, what it costs, and how long each groom takes.</p>
+  </div>
+</div>
+
+<div class="mt-5 grid gap-3 sm:grid-cols-2">
+  <details class="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-sm">
+    <summary class="flex cursor-pointer list-none items-center gap-2 text-sm font-extrabold text-brand-700 transition hover:text-brand-800 [&::-webkit-details-marker]:hidden">
+      <span class="grid h-7 w-7 place-items-center rounded-full bg-brand-600 text-base font-bold leading-none text-white shadow-sm shadow-brand-600/20">+</span>
+      Add a service
+    </summary>
+    <AdminServiceForm defaultSortOrder={nextServiceOrder} submitLabel="Add service" />
+  </details>
+
+  <details class="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-sm">
+    <summary class="flex cursor-pointer list-none items-center gap-2 text-sm font-extrabold text-brand-700 transition hover:text-brand-800 [&::-webkit-details-marker]:hidden">
+      <span class="grid h-7 w-7 place-items-center rounded-full bg-brand-600 text-base font-bold leading-none text-white shadow-sm shadow-brand-600/20">+</span>
+      Add an add-on
+    </summary>
+    <AdminAddonForm defaultSortOrder={nextAddonOrder} submitLabel="Add add-on" />
+  </details>
+</div>
+
+<section class="mt-8">
+  <div class="flex items-end justify-between gap-3">
+    <div>
+      <h2 class="text-lg font-extrabold">Groom services</h2>
+      <p class="text-sm text-stone-500">Deactivate a service to hide it from new bookings without breaking past bookings.</p>
+    </div>
+  </div>
+
+  <div class="mt-3 space-y-3">
+    {services.map((service) => (
+      <div class="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-sm">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <p class="font-extrabold">
+              {service.name}
+              {!service.active && <span class="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-bold text-stone-500">Inactive</span>}
+            </p>
+            <p class="mt-1 text-sm text-stone-500">
+              {priceSummary(service)} · {durationSummary(service)}
+              {service.hasSizes ? ' · size-based' : ' · flat price'}
+            </p>
+            {service.description && <p class="mt-1 line-clamp-2 text-sm text-stone-500">{service.description}</p>}
+          </div>
+          <span class={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${service.active ? 'bg-green-50 text-green-700' : 'bg-stone-100 text-stone-500'}`}>
+            {service.active ? 'Bookable' : 'Hidden'}
+          </span>
+        </div>
+
+        <details class="mt-4 border-t border-stone-100 pt-4">
+          <summary class="inline-flex cursor-pointer list-none items-center gap-2 rounded-full bg-stone-50 px-3 py-1.5 text-sm font-bold text-brand-700 ring-1 ring-inset ring-stone-200 transition hover:bg-brand-50 hover:text-brand-800 [&::-webkit-details-marker]:hidden">
+            Edit service
+          </summary>
+          <AdminServiceForm service={service} defaultSortOrder={service.sortOrder} submitLabel="Save service" />
+        </details>
+      </div>
+    ))}
+  </div>
+</section>
+
+<section class="mt-10">
+  <div>
+    <h2 class="text-lg font-extrabold">Add-ons</h2>
+    <p class="text-sm text-stone-500">Optional extras customers can add to a groom.</p>
+  </div>
+
+  <div class="mt-3 space-y-2">
+    {addons.map((addon) => (
+      <div class="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm">
+        <details>
+          <summary class="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+            <div class="min-w-0">
+              <p class="font-bold">
+                {addon.name}
+                {!addon.active && <span class="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-xs font-bold text-stone-500">Inactive</span>}
+              </p>
+              <p class="text-sm text-stone-500">{money(addon.priceCents)}</p>
+            </div>
+            <span class="rounded-full bg-stone-50 px-3 py-1.5 text-sm font-bold text-brand-700 ring-1 ring-inset ring-stone-200">Edit</span>
+          </summary>
+          <AdminAddonForm addon={addon} defaultSortOrder={addon.sortOrder} submitLabel="Save add-on" />
+        </details>
+      </div>
+    ))}
+    {addons.length === 0 && <p class="text-sm text-stone-500">No add-ons yet.</p>}
+  </div>
+</section>
+
+<script>
+document.querySelectorAll<HTMLFormElement>('[data-service-form]').forEach((form) => {
+  const toggle = form.querySelector<HTMLInputElement>('[name="hasSizes"]');
+  const flat = form.querySelector<HTMLElement>('[data-flat-fields]');
+  const sizes = form.querySelector<HTMLElement>('[data-size-fields]');
+  if (!toggle || !flat || !sizes) return;
+
+  const sync = () => {
+    flat.classList.toggle('hidden', toggle.checked);
+    sizes.classList.toggle('hidden', !toggle.checked);
+  };
+  toggle.addEventListener('change', sync);
+  sync();
+});
+</script>

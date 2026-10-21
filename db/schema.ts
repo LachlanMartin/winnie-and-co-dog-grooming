@@ -123,6 +123,7 @@ export const invoiceItems = pgTable('invoice_items', {
 });
 
 export type Service = typeof services.$inferSelect;
+export type Addon = typeof addons.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 export type InvoiceItem = typeof invoiceItems.$inferSelect;
