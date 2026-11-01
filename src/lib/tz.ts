@@ -37,6 +37,10 @@ export function dayLabel(d: Date): string {
   return formatInTimeZone(d, BUSINESS_TZ, 'EEEE d MMM');
 }
 
+export function fullDateLabel(d: Date): string {
+  return formatInTimeZone(d, BUSINESS_TZ, 'd MMMM yyyy');
+}
+
 export function slotLabel(d: Date): string {
   return formatInTimeZone(d, BUSINESS_TZ, 'EEE d MMM, h:mm a');
 }

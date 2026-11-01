@@ -5,7 +5,7 @@ import { invoiceItems, invoices } from '../../../../../db/schema';
 import { getSetting } from '../../../../lib/settings';
 import { recalcInvoiceTotals, loadInvoiceByToken } from '../../../../lib/invoice';
 import { dollarsToCents } from '../../../../lib/money';
-import { emailInvoiceSent } from '../../../../lib/email';
+import { emailInvoiceSent, emailReceiptSent } from '../../../../lib/email';
 
 export const POST: APIRoute = async ({ request, redirect, params }) => {
   const id = Number(params.id);
@@ -64,6 +64,14 @@ export const POST: APIRoute = async ({ request, redirect, params }) => {
       : {};
 
   await db.update(invoices).set({ dueDate: dueDate || null, notes, ...statusChange }).where(eq(invoices.id, id));
+
+  if (action === 'receipt') {
+    const data = await loadInvoiceByToken(inv.token);
+    if (data?.invoice.status === 'paid' && data.booking && data.service && data.items.length) {
+      await emailReceiptSent({ ...data.booking, service: data.service }, data.invoice, data.items);
+    }
+    return redirect(back);
+  }
 
   if (action === 'send' && !paid && inv.status !== 'paid' && inv.status !== 'void') {
     await db

@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 import { money } from './money';
-import { slotLabel } from './tz';
+import { fullDateLabel, slotLabel } from './tz';
 import type { Booking, Invoice, InvoiceItem, Service } from '../../db/schema';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -159,6 +159,33 @@ export async function emailInvoiceSent(
        ${bankDetails ? `<p><b>Payment details:</b><br>${bankDetails.replace(/\n/g, '<br>')}</p>` : ''}
        <p><a href="${SITE}/invoice/${inv.token}" style="display:inline-block;background:#0789c5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">View invoice</a></p>
        <p style="font-size:13px;color:#6b7280">Please pay by ${inv.dueDate ?? 'your appointment date'}. Thank you!</p>`,
+    ),
+  );
+}
+
+export async function emailReceiptSent(
+  b: BookingView,
+  inv: Invoice,
+  items: InvoiceItem[],
+) {
+  const rows = items
+    .map((i) => `<tr><td>${i.description}</td><td align="right">${i.quantity}</td><td align="right">${money(i.unitPriceCents * i.quantity)}</td></tr>`)
+    .join('');
+  const paidDate = inv.paidAt ? fullDateLabel(inv.paidAt) : '';
+  await send(
+    b.customerEmail,
+    `Receipt ${inv.number} from Winnie & Co Dog Grooming`,
+    shell(
+      `<p>Hi ${b.customerName},</p>
+       <p>We've received your payment for invoice ${inv.number}. Thank you!</p>
+       <table style="width:100%;border-collapse:collapse;margin:16px 0">
+         <tr style="border-bottom:1px solid #e5e7eb"><th align="left">Description</th><th align="right">Qty</th><th align="right">Amount</th></tr>
+         ${rows}
+         <tr style="font-weight:700"><td>Amount paid</td><td></td><td align="right">${money(inv.totalCents)}</td></tr>
+       </table>
+       ${paidDate ? `<p><b>Paid:</b> ${paidDate}</p>` : ''}
+       <p><a href="${SITE}/receipt/${inv.token}" style="display:inline-block;background:#0789c5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">View receipt</a></p>
+       <p style="font-size:13px;color:#6b7280">This receipt confirms payment for invoice ${inv.number}. Thank you for supporting a small, local business! 🐾</p>`,
     ),
   );
 }

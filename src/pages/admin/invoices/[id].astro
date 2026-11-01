@@ -109,6 +109,9 @@ const error = Astro.url.searchParams.get('error');
             {inv.status !== 'paid' && inv.status !== 'void' && (
               <button id="send-to-customer" name="action" value="send" class="rounded-full bg-brand-600 px-6 py-2 text-sm font-bold text-white hover:bg-brand-700">Send to customer</button>
             )}
+            {inv.status === 'paid' && (
+              <button name="action" value="receipt" class="rounded-full bg-green-600 px-6 py-2 text-sm font-bold text-white hover:bg-green-700">Send receipt</button>
+            )}
             {inv.status !== 'void' && (
               <button formnovalidate name="action" value="void" class="ml-auto rounded-full border border-stone-300 px-5 py-2 text-sm font-bold text-stone-500 hover:bg-stone-50">Void</button>
             )}
