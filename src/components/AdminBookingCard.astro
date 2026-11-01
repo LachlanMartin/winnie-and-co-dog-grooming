@@ -21,28 +21,28 @@ const totalMinutes = bookings.reduce((sum, b) => sum + minutesFor(b), 0);
 <div class="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-sm">
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div class="min-w-0">
-      <p class="font-extrabold">
+      <p class="break-words font-extrabold">
         {lead.customerName} — {dogNames}
         {bookings.length > 1 && <span class="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-bold text-brand-800">{bookings.length} dogs</span>}
       </p>
       {bookings.map((b) => (
-        <p class="text-sm text-stone-500">
+        <p class="break-words text-sm text-stone-500">
           {b.dogName}: {b.service?.name}{b.size ? ` · ${b.size}` : ''} · {formatDuration(minutesFor(b))} · {dayLabel(b.slotStart)} at {timeOfDay(b.slotStart)}
         </p>
       ))}
       {bookings.length > 1 && (
         <p class="mt-1 text-xs font-bold text-brand-700">Total visit: {formatDuration(totalMinutes)}</p>
       )}
-      <p class="mt-1 text-sm text-stone-500">{lead.customerEmail} · {lead.customerPhone}</p>
-      <p class="text-sm text-stone-500">{lead.address}{lead.suburb ? `, ${lead.suburb}` : ''}</p>
-      {addonNames.length > 0 && <p class="mt-1 text-xs font-semibold text-brand-700">Add-ons: {addonNames.join(', ')}</p>}
-      {lead.notes && <p class="mt-1 rounded bg-stone-50 p-2 text-sm text-stone-600"><b>Notes:</b> {lead.notes}</p>}
+      <p class="mt-1 break-words text-sm text-stone-500">{lead.customerEmail} · {lead.customerPhone}</p>
+      <p class="break-words text-sm text-stone-500">{lead.address}{lead.suburb ? `, ${lead.suburb}` : ''}</p>
+      {addonNames.length > 0 && <p class="mt-1 break-words text-xs font-semibold text-brand-700">Add-ons: {addonNames.join(', ')}</p>}
+      {lead.notes && <p class="mt-1 break-words rounded bg-stone-50 p-2 text-sm text-stone-600"><b>Notes:</b> {lead.notes}</p>}
     </div>
-    <form method="POST" action={`/api/admin/bookings/${lead.id}`} class="flex gap-2">
+    <form method="POST" action={`/api/admin/bookings/${lead.id}`} class="flex w-full flex-wrap gap-2 sm:w-auto">
       {mode === 'pending' ? (
         <>
-          <button type="submit" name="action" value="approve" class="rounded-xl bg-green-600 px-4 py-2 text-sm font-bold text-white shadow-sm shadow-green-600/20 transition hover:bg-green-700 active:scale-[.98]">Approve</button>
-          <button type="submit" name="action" value="decline" class="rounded-xl border border-red-200 px-4 py-2 text-sm font-bold text-red-600 transition hover:bg-red-50 active:scale-[.98]">Decline</button>
+          <button type="submit" name="action" value="approve" class="flex-1 rounded-xl bg-green-600 px-4 py-2 text-sm font-bold text-white shadow-sm shadow-green-600/20 transition hover:bg-green-700 active:scale-[.98] sm:flex-none">Approve</button>
+          <button type="submit" name="action" value="decline" class="flex-1 rounded-xl border border-red-200 px-4 py-2 text-sm font-bold text-red-600 transition hover:bg-red-50 active:scale-[.98] sm:flex-none">Decline</button>
         </>
       ) : (
         <>
@@ -90,10 +90,10 @@ const totalMinutes = bookings.reduce((sum, b) => sum + minutesFor(b), 0);
       </div>
       <div class="sm:col-span-2 grid gap-2 sm:grid-cols-2">
         {bookings.map((b) => (
-          <div class="flex gap-2">
+          <div class="flex min-w-0 flex-col gap-2 sm:flex-row">
             <input type="hidden" name="dog_id" value={b.id} />
-            <input name="dog_name" value={b.dogName} required aria-label="Dog name" class="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
-            <input name="dog_breed" value={b.dogBreed} placeholder="Breed" aria-label="Dog breed" class="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+            <input name="dog_name" value={b.dogName} required aria-label="Dog name" class="w-full min-w-0 rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+            <input name="dog_breed" value={b.dogBreed} placeholder="Breed" aria-label="Dog breed" class="w-full min-w-0 rounded-lg border border-stone-300 px-3 py-2 text-sm" />
           </div>
         ))}
       </div>

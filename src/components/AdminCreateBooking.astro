@@ -47,7 +47,7 @@ const priced = services.map((s) => {
 const today = dateStr(new Date());
 ---
 
-<details id="admin-create-booking" class="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-sm">
+<details id="admin-create-booking" class="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm sm:p-5">
   <summary class="flex cursor-pointer list-none items-center gap-2 text-sm font-extrabold text-brand-700 transition hover:text-brand-800 [&::-webkit-details-marker]:hidden">
     <span class="grid h-7 w-7 place-items-center rounded-full bg-brand-600 text-base font-bold leading-none text-white shadow-sm shadow-brand-600/20">+</span>
     Create booking
@@ -85,10 +85,10 @@ const today = dateStr(new Date());
       <p class="text-sm font-bold text-stone-700">Dogs</p>
       <div id="admin-dog-rows" class="mt-2 space-y-2"></div>
       <template id="admin-dog-template">
-        <div data-admin-dog class="flex flex-wrap items-center gap-2 rounded-lg bg-stone-50 p-2">
-          <input name="dog_name" placeholder="Dog name" required aria-label="Dog name" class="min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm" />
-          <input name="dog_breed" placeholder="Breed" aria-label="Breed" class="min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm" />
-          <select name="service" required aria-label="Service" class="rounded-lg border border-stone-300 px-2 py-2 text-sm">
+        <div data-admin-dog class="grid grid-cols-2 gap-2 rounded-lg bg-stone-50 p-2 sm:flex sm:flex-wrap sm:items-center">
+          <input name="dog_name" placeholder="Dog name" required aria-label="Dog name" class="min-w-0 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm sm:flex-1" />
+          <input name="dog_breed" placeholder="Breed" aria-label="Breed" class="min-w-0 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm sm:flex-1" />
+          <select name="service" required aria-label="Service" class="col-span-2 min-w-0 w-full rounded-lg border border-stone-300 px-2 py-2 text-sm sm:w-auto sm:flex-1">
             <option value="">Service…</option>
             {priced.map((s) => (
               <option
@@ -102,12 +102,12 @@ const today = dateStr(new Date());
               >{s.name} — {s.price} · {s.duration}</option>
             ))}
           </select>
-          <select name="size" aria-label="Size" class="hidden rounded-lg border border-stone-300 px-2 py-2 text-sm">
+          <select name="size" aria-label="Size" class="hidden w-full min-w-0 rounded-lg border border-stone-300 px-2 py-2 text-sm sm:w-auto">
             <option value="">Size…</option>
             {sizes.map((z) => <option value={z}>{sizeLabels[z]}</option>)}
           </select>
-          <span data-admin-dog-duration class="w-full text-xs font-semibold text-brand-700"></span>
-          <button type="button" data-remove-dog class="text-sm font-bold text-red-500 hover:text-red-700">Remove</button>
+          <span data-admin-dog-duration class="col-span-2 w-full text-xs font-semibold text-brand-700"></span>
+          <button type="button" data-remove-dog class="col-span-2 justify-self-start text-sm font-bold text-red-500 hover:text-red-700 sm:col-auto">Remove</button>
         </div>
       </template>
       <button type="button" id="admin-add-dog" class="mt-2 rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-600 shadow-sm transition hover:border-stone-300 hover:bg-stone-50 active:scale-[.98]">+ Add another dog</button>
