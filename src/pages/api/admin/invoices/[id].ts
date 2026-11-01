@@ -49,9 +49,23 @@ export const POST: APIRoute = async ({ request, redirect, params }) => {
 
   const dueDate = String(form.get('due_date') ?? '').trim();
   const notes = String(form.get('notes') ?? '').trim();
-  await db.update(invoices).set({ dueDate: dueDate || null, notes }).where(eq(invoices.id, id));
+  const paid = form.get('paid') === '1';
 
-  if (action === 'send' && inv.status !== 'paid') {
+  if (!paid && inv.status !== 'void' && action !== 'void' && !dueDate) {
+    return redirect(`${back}?error=due_date`);
+  }
+
+  const statusChange = paid
+    ? inv.status === 'paid'
+      ? {}
+      : { status: 'paid', paidAt: new Date() }
+    : inv.status === 'paid'
+      ? { status: inv.sentAt ? 'sent' : 'draft', paidAt: null }
+      : {};
+
+  await db.update(invoices).set({ dueDate: dueDate || null, notes, ...statusChange }).where(eq(invoices.id, id));
+
+  if (action === 'send' && !paid && inv.status !== 'paid' && inv.status !== 'void') {
     await db
       .update(invoices)
       .set({ status: 'sent', sentAt: new Date() })
@@ -61,11 +75,6 @@ export const POST: APIRoute = async ({ request, redirect, params }) => {
       const bankDetails = (await getSetting('bank_details')) ?? '';
       await emailInvoiceSent({ ...data.booking, service: data.service }, { ...inv, status: 'sent' as const }, data.items, bankDetails);
     }
-    return redirect('/admin?tab=invoices');
-  }
-
-  if (action === 'paid') {
-    await db.update(invoices).set({ status: 'paid', paidAt: new Date() }).where(eq(invoices.id, id));
     return redirect('/admin?tab=invoices');
   }
 
