@@ -12,6 +12,7 @@ const [allServices, allAddons] = await Promise.all([
 ]);
 
 const preselect = Astro.url.searchParams.get('service');
+const caldiyPreview = Boolean((import.meta.env.CALDIY_BOOKING_URL ?? '').trim());
 ---
 
 <Base title="Book a groom · Winnie & Co Dog Grooming" description="Book your dog's grooming appointment online.">
@@ -19,6 +20,13 @@ const preselect = Astro.url.searchParams.get('service');
     <a href="/" class="text-sm font-semibold text-brand-600 hover:text-brand-800">&larr; Back home</a>
     <h1 class="mt-2 text-3xl font-black text-stone-900">Book a groom</h1>
     <p class="mt-1 text-stone-600">Pick a service for each dog, then choose a day and time. Your request goes to Alisha for confirmation.</p>
+    {caldiyPreview && (
+      <p class="mt-3 text-sm">
+        <a href="/book/caldiy" class="font-bold text-brand-600 underline underline-offset-2 hover:text-brand-800">
+          Preview the Cal.diy booking experience &rarr;
+        </a>
+      </p>
+    )}
 
     <BookingWizard
       services={allServices}

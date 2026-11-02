@@ -68,6 +68,19 @@ npm run check                # typecheck
 npx tsx src/lib/availability.check.ts   # availability engine self-check
 ```
 
+### Cal.diy booking preview (optional)
+
+`/book/caldiy` is an isolated preview of a self-hosted [Cal.diy](https://github.com/calcom/cal.diy) booking page. It does not create bookings, invoices, or admin records in this app; the current `/book` flow stays unchanged.
+
+1. Run Cal.diy separately and create a booking link. Follow its README/Docker setup.
+2. Add the event URL to `.env`:
+   ```bash
+   CALDIY_BOOKING_URL=http://localhost:3000/alisha/30min
+   ```
+3. Restart `npm run dev` and open <http://localhost:4321/book/caldiy>.
+
+The page embeds the Cal.diy booker and always links to the full booking page as a fallback. When `CALDIY_BOOKING_URL` is unset, `/book` behaves exactly as before.
+
 ## Deploy to Vercel
 
 1. Create a **Neon** project → copy the **pooled** connection string.
