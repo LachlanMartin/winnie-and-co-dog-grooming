@@ -6,11 +6,6 @@
       "url": "https://mcp.vercel.com/lachlan-martins-projects/winnie-and-co-dog-grooming",
       "enabled": true
     },
-    "neon": {
-      "type": "remote",
-      "url": "https://mcp.neon.tech/mcp",
-      "enabled": true
-    },
     "resend": {
       "type": "local",
       "command": ["npx", "-y", "resend-mcp"],
